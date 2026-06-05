@@ -1,0 +1,32 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: ky-exam-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ky_root_password
+      MYSQL_DATABASE: ky_examination
+      MYSQL_USER: ky_user
+      MYSQL_PASSWORD: ky_password
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - ky_exam_mysql_data:/var/lib/mysql
+      - ./docker/mysql/init:/docker-entrypoint-initdb.d:ro
+    command:
+      - --character-set-server=utf8mb4
+      - --collation-server=utf8mb4_0900_ai_ci
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: ky-exam-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - ky_exam_redis_data:/data
+
+volumes:
+  ky_exam_mysql_data:
+  ky_exam_redis_data:

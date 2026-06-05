@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/backend/ky-admin-app/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-admin-app/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-agent-bridge/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-agent-bridge/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-common/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-common/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-community/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-community/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-learning/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-learning/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-syllabus/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-syllabus/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-system/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/ky-system/src/main/resources" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/backend/src/main/resources" charset="UTF-8" />
+  </component>
+</project>

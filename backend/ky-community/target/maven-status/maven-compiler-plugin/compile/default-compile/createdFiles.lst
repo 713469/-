@@ -1,0 +1,6 @@
+com\kyexam\community\dto\CommunityPostCreateRequest.class
+com\kyexam\community\dto\CommunityPostStatusRequest.class
+com\kyexam\community\service\CommunityService.class
+com\kyexam\community\controller\CommunityController.class
+com\kyexam\community\entity\CommunityPost.class
+com\kyexam\community\mapper\CommunityPostMapper.class
