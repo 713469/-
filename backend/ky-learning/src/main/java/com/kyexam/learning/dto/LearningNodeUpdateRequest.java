@@ -3,10 +3,16 @@ package com.kyexam.learning.dto;
 import com.kyexam.common.enums.LearningStatus;
 
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 public class LearningNodeUpdateRequest {
+    @Size(max = 160)
     private String title;
+
+    @Size(max = 64)
     private String label;
+
+    @Size(max = 64)
     private String iconKey;
 
     @NotNull

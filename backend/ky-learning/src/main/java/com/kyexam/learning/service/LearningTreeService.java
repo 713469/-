@@ -86,12 +86,30 @@ public class LearningTreeService {
         return toTagViews(selectTagsByNodeId(userId, nodeId));
     }
 
-    public List<LearningNodeConnectionView> connections() {
+    public LearningNodeTagView tag(Long tagId) {
         Long userId = UserContext.current().getId();
-        return toConnectionViews(selectConnections(userId));
+        return toTagView(requireOwnedTag(tagId, userId));
+    }
+
+    public List<LearningNodeConnectionView> connections(Long treeId) {
+        Long userId = UserContext.current().getId();
+        if (treeId == null) {
+            return toConnectionViews(selectConnections(userId));
+        }
+        studyTreeService.requireOwnedTree(treeId, userId);
+        return toConnectionViews(selectConnections(userId, treeId));
+    }
+
+    public LearningNodeConnectionView connection(Long connectionId) {
+        Long userId = UserContext.current().getId();
+        return toConnectionView(requireOwnedConnection(connectionId, userId));
     }
 
     public UserSyllabusNode requireCurrentUserNode(Long id) {
+        return requireOwnedNode(id, UserContext.current().getId());
+    }
+
+    public UserSyllabusNode node(Long id) {
         return requireOwnedNode(id, UserContext.current().getId());
     }
 
@@ -227,11 +245,10 @@ public class LearningTreeService {
     @Transactional
     public LearningNodeConnectionView createConnection(LearningNodeConnectionRequest request) {
         Long userId = UserContext.current().getId();
-        if (request.getSourceNodeId().equals(request.getTargetNodeId())) {
-            throw new BusinessException(400, "节点连接的起点和终点不能相同");
-        }
-        requireOwnedNode(request.getSourceNodeId(), userId);
-        requireOwnedNode(request.getTargetNodeId(), userId);
+        validateConnectionRequest(request);
+        UserSyllabusNode source = requireOwnedNode(request.getSourceNodeId(), userId);
+        UserSyllabusNode target = requireOwnedNode(request.getTargetNodeId(), userId);
+        ensureSameTree(source, target);
         ensureConnectionMissing(userId, request.getSourceNodeId(), request.getTargetNodeId());
 
         LocalDateTime now = LocalDateTime.now();
@@ -251,11 +268,10 @@ public class LearningTreeService {
     public LearningNodeConnectionView updateConnection(Long connectionId, LearningNodeConnectionRequest request) {
         Long userId = UserContext.current().getId();
         LearningNodeConnection connection = requireOwnedConnection(connectionId, userId);
-        if (request.getSourceNodeId().equals(request.getTargetNodeId())) {
-            throw new BusinessException(400, "节点连接的起点和终点不能相同");
-        }
-        requireOwnedNode(request.getSourceNodeId(), userId);
-        requireOwnedNode(request.getTargetNodeId(), userId);
+        validateConnectionRequest(request);
+        UserSyllabusNode source = requireOwnedNode(request.getSourceNodeId(), userId);
+        UserSyllabusNode target = requireOwnedNode(request.getTargetNodeId(), userId);
+        ensureSameTree(source, target);
         ensureConnectionMissing(userId, request.getSourceNodeId(), request.getTargetNodeId(), connectionId);
 
         connection.setSourceNodeId(request.getSourceNodeId());
@@ -272,6 +288,18 @@ public class LearningTreeService {
         Long userId = UserContext.current().getId();
         LearningNodeConnection connection = requireOwnedConnection(connectionId, userId);
         learningNodeConnectionMapper.deleteById(connection.getId());
+    }
+
+    @Transactional
+    public void deleteNode(Long id) {
+        Long userId = UserContext.current().getId();
+        UserSyllabusNode node = requireOwnedNode(id, userId);
+        List<UserSyllabusNode> treeNodes = selectUserNodes(userId, node.getTreeId());
+        List<Long> nodeIds = collectDescendantIds(treeNodes, node.getId());
+        if (nodeIds.isEmpty()) {
+            return;
+        }
+        deleteNodesByIds(userId, nodeIds);
     }
 
     @Transactional
@@ -320,6 +348,10 @@ public class LearningTreeService {
         for (UserSyllabusNode node : nodes) {
             nodeIds.add(node.getId());
         }
+        deleteNodesByIds(userId, nodeIds);
+    }
+
+    private void deleteNodesByIds(Long userId, List<Long> nodeIds) {
         learningNodeConnectionMapper.delete(new LambdaQueryWrapper<LearningNodeConnection>()
                 .eq(LearningNodeConnection::getUserId, userId)
                 .and(wrapper -> wrapper
@@ -332,9 +364,12 @@ public class LearningTreeService {
         learningReflectionMapper.delete(new LambdaQueryWrapper<LearningReflection>()
                 .eq(LearningReflection::getUserId, userId)
                 .in(LearningReflection::getUserNodeId, nodeIds));
-        List<UserSyllabusNode> reversed = new ArrayList<UserSyllabusNode>(nodes);
-        Collections.reverse(reversed);
-        for (UserSyllabusNode node : reversed) {
+        List<UserSyllabusNode> nodes = userSyllabusNodeMapper.selectList(new LambdaQueryWrapper<UserSyllabusNode>()
+                .eq(UserSyllabusNode::getUserId, userId)
+                .in(UserSyllabusNode::getId, nodeIds)
+                .orderByDesc(UserSyllabusNode::getLevelNo)
+                .orderByDesc(UserSyllabusNode::getId));
+        for (UserSyllabusNode node : nodes) {
             userSyllabusNodeMapper.deleteById(node.getId());
         }
     }
@@ -468,6 +503,22 @@ public class LearningTreeService {
                 .orderByAsc(LearningNodeConnection::getId));
     }
 
+    private List<LearningNodeConnection> selectConnections(Long userId, Long treeId) {
+        List<UserSyllabusNode> nodes = selectUserNodes(userId, treeId);
+        if (nodes.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<Long> nodeIds = new ArrayList<Long>();
+        for (UserSyllabusNode node : nodes) {
+            nodeIds.add(node.getId());
+        }
+        return learningNodeConnectionMapper.selectList(new LambdaQueryWrapper<LearningNodeConnection>()
+                .eq(LearningNodeConnection::getUserId, userId)
+                .in(LearningNodeConnection::getSourceNodeId, nodeIds)
+                .in(LearningNodeConnection::getTargetNodeId, nodeIds)
+                .orderByAsc(LearningNodeConnection::getId));
+    }
+
     private LearningNodeTag requireOwnedTag(Long tagId, Long userId) {
         LearningNodeTag tag = learningNodeTagMapper.selectOne(new LambdaQueryWrapper<LearningNodeTag>()
                 .eq(LearningNodeTag::getId, tagId)
@@ -500,6 +551,41 @@ public class LearningTreeService {
         for (LearningNodeConnection item : existing) {
             if (excludeId == null || !excludeId.equals(item.getId())) {
                 throw new BusinessException(400, "该节点连接已经存在");
+            }
+        }
+    }
+
+    private void validateConnectionRequest(LearningNodeConnectionRequest request) {
+        if (request.getSourceNodeId().equals(request.getTargetNodeId())) {
+            throw new BusinessException(400, "节点连接的起点和终点不能相同");
+        }
+        requireMaxLength(request.getRelationType(), 32, "连接类型不能超过 32 个字符");
+        requireMaxLength(request.getLabel(), 160, "连接说明不能超过 160 个字符");
+    }
+
+    private void ensureSameTree(UserSyllabusNode source, UserSyllabusNode target) {
+        if (source.getTreeId() == null || target.getTreeId() == null || !source.getTreeId().equals(target.getTreeId())) {
+            throw new BusinessException(400, "节点连接的起点和终点必须属于同一棵考研树");
+        }
+    }
+
+    private static void requireMaxLength(String value, int max, String message) {
+        if (value != null && value.length() > max) {
+            throw new BusinessException(400, message);
+        }
+    }
+
+    private static List<Long> collectDescendantIds(List<UserSyllabusNode> nodes, Long rootId) {
+        List<Long> result = new ArrayList<Long>();
+        collectDescendantIds(nodes, rootId, result);
+        return result;
+    }
+
+    private static void collectDescendantIds(List<UserSyllabusNode> nodes, Long currentId, List<Long> result) {
+        result.add(currentId);
+        for (UserSyllabusNode node : nodes) {
+            if (currentId.equals(node.getParentId())) {
+                collectDescendantIds(nodes, node.getId(), result);
             }
         }
     }

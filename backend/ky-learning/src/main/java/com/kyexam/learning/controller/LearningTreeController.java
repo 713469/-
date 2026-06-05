@@ -48,6 +48,11 @@ public class LearningTreeController {
         return ApiResponse.ok(learningTreeService.createCustomNode(request));
     }
 
+    @GetMapping("/nodes/{id}")
+    public ApiResponse<UserSyllabusNode> node(@PathVariable Long id) {
+        return ApiResponse.ok(learningTreeService.node(id));
+    }
+
     @PutMapping("/nodes/{id}")
     public ApiResponse<UserSyllabusNode> updateNode(
             @PathVariable Long id,
@@ -65,6 +70,12 @@ public class LearningTreeController {
     @PostMapping("/nodes/{id}/review")
     public ApiResponse<UserSyllabusNode> review(@PathVariable Long id) {
         return ApiResponse.ok(learningTreeService.review(id));
+    }
+
+    @DeleteMapping("/nodes/{id}")
+    public ApiResponse<Void> deleteNode(@PathVariable Long id) {
+        learningTreeService.deleteNode(id);
+        return ApiResponse.ok(null);
     }
 
     @GetMapping("/nodes/{id}/tags")
@@ -86,6 +97,11 @@ public class LearningTreeController {
         return ApiResponse.ok(learningTreeService.updateTag(tagId, request));
     }
 
+    @GetMapping("/tags/{tagId}")
+    public ApiResponse<LearningNodeTagView> tag(@PathVariable Long tagId) {
+        return ApiResponse.ok(learningTreeService.tag(tagId));
+    }
+
     @DeleteMapping("/tags/{tagId}")
     public ApiResponse<Void> deleteTag(@PathVariable Long tagId) {
         learningTreeService.deleteTag(tagId);
@@ -93,8 +109,13 @@ public class LearningTreeController {
     }
 
     @GetMapping("/connections")
-    public ApiResponse<List<LearningNodeConnectionView>> connections() {
-        return ApiResponse.ok(learningTreeService.connections());
+    public ApiResponse<List<LearningNodeConnectionView>> connections(@RequestParam(required = false) Long treeId) {
+        return ApiResponse.ok(learningTreeService.connections(treeId));
+    }
+
+    @GetMapping("/connections/{connectionId}")
+    public ApiResponse<LearningNodeConnectionView> connection(@PathVariable Long connectionId) {
+        return ApiResponse.ok(learningTreeService.connection(connectionId));
     }
 
     @PostMapping("/connections")

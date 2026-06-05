@@ -4,7 +4,7 @@
 
 - 后端：Java 8 + Spring Boot 2.7 + MyBatis-Plus
 - 前端：Vue 3 + TypeScript
-- 基础设施：MySQL 8 / Redis 7（Docker）
+- 基础设施：MySQL 8.0 / Redis 7（Docker）
 - 后续预留：独立运行的 NestJS Agent 服务
 
 当前重点能力：
@@ -28,6 +28,7 @@
 │  ├─ ky-syllabus
 │  └─ ky-system
 ├─ frontend
+├─ agent-service
 ├─ docker
 │  └─ mysql/init
 └─ docker-compose.yml
@@ -45,6 +46,8 @@ docker compose up -d
 
 - MySQL: `localhost:3307`
 - Redis: `localhost:6379`
+
+当前 `docker-compose.yml` 使用 `mysql:8.0`。如果你本地已经存在旧的 MySQL 8.4 容器和数据卷，只有重建容器/数据卷后镜像版本才会切换；不重建时，现有数据库会继续保持原版本运行。
 
 默认数据库信息：
 
@@ -106,65 +109,58 @@ Authorization: Bearer <token>
 
 ## 数据库管理规则
 
-现在数据库规则已经收束成两层：
+数据库 SQL 分为“首次建库基线”和“增量迁移”两类：
 
-1. `docker/mysql/init/001_schema.sql`
-   - 只负责“新库首次初始化”的完整基线
-   - 适合全新 MySQL 容器第一次启动时执行
+1. `docker/mysql/init`
+   - 只负责全新 MySQL 容器首次初始化，Docker 会按文件名顺序执行。
+   - 当前只保留 `001_schema.sql`，作为基础账号、RBAC、官方大纲、学习树、标签、连接等基础表的建库基线。
 
 2. `backend/ky-admin-app/src/main/resources/db/migration`
-   - 只负责“后续结构演进”
-   - 当前已启用 Flyway
-   - 新增字段、新表、迁移逻辑，后续统一写到这里
+   - 负责已有库的后续结构演进。
+   - 当前 `spring.flyway.enabled=true`，后端启动时会自动执行尚未落库的迁移。
+   - 演示数据和后续结构变更统一走 Flyway，不再继续维护 `runtime-updates.sql`，也不再把增量 SQL 堆到 `docker/mysql/init`。
 
-### 当前约定
+### 首次建库
 
-- 不再继续维护 `runtime-updates.sql`
-- 不再把增量变更继续堆到 `docker/mysql/init/002_*.sql`
-- 以后每一次数据库结构变更，都新增一个 Flyway 文件，例如：
+Docker 官方 MySQL 镜像只会在数据目录为空时执行 `/docker-entrypoint-initdb.d`。如需重建演示库：
 
-```text
-V3__add_xxx.sql
-V4__create_xxx.sql
+```powershell
+docker compose down
+docker volume rm ky-examination_ky_exam_mysql_data
+docker compose up -d mysql redis
 ```
 
-### 当前已存在的迁移
+初始化 MySQL 后，再启动后端服务触发 Flyway 迁移。迁移完成后，普通考生 `candidate` 名下会得到 `2` 个分组、`7` 棵主要考研树，并包含节点标签、知识连接、学习反思、社区帖子等演示数据。
 
-- `V2__learning_tree_extensions.sql`
-  - 补齐 `user_syllabus_node.icon_key`
-  - 补齐 `user_syllabus_node.tree_id`
-  - 创建 `tree_group`
-  - 创建 `study_tree`
-  - 创建 `learning_node_tag`
-  - 创建 `learning_node_connection`
-  - 初始化默认 `专业课 / 408`
-  - 把老节点回填到默认树
+### 增量更新
 
-### 关于本地数据库落库
+已有 `ky_examination` 库优先通过 Flyway 更新：启动 `ky-admin-app` 后，`backend/ky-admin-app/src/main/resources/db/migration` 下未执行过的 `V*.sql` 会自动落库。
 
-这次整理过程中，当前开发库 `ky_examination` 已经由我手动执行过迁移 SQL，不只是改了文件。
+当前迁移文件：
 
-后续如果再有数据库结构更新，我会遵循这套流程：
+- `V2__learning_tree_extensions.sql`：补齐 `icon_key`、`tree_id`，创建树分组、树实例、节点标签、知识连接，并把旧节点回填到默认 `专业课 / 专业课默认树`。
+- `V3__seed_candidate_demo_data.sql`：补充普通考生多学科演示数据，覆盖数据结构、操作系统、计算机组成原理、计算机网络、高等数学、英语、政治。
+- `V4__learning_crud_constraints.sql`：补齐 CRUD MVP 所需字段、表、索引、外键与老数据兼容回填。
 
-1. 先新增 Flyway 迁移文件
-2. 再把迁移实际执行到你当前使用的 MySQL
-3. 最后同步更新 README 中的说明
+如果不依赖 Flyway，也可以按版本顺序手动执行这些 SQL。执行前请先备份数据库。
 
-## 多树模型说明
+## 学习树模型与删除策略
 
 核心模型：
 
-- `tree_group`：树分组，例如“专业课 / 公共课 / 自定义”
-- `study_tree`：一棵具体的考研树，例如“408 / 高数 / 英语一”
-- `user_syllabus_node.tree_id`：节点归属到哪一棵树
+- `tree_group`：树分组，例如“专业课 / 公共课 / 自定义分组”。
+- `study_tree`：一棵具体考研树，例如“数据结构 / 操作系统 / 高等数学 / 英语 / 政治”。
+- `user_syllabus_node.tree_id`：学习节点归属到某棵考研树。
+- `learning_node_tag`：节点标签。
+- `learning_node_connection`：节点之间的知识连接。
 
-注意：
+删除策略：
 
-- 树本身不是 `user_syllabus_node`
-- 根级新增节点时，`parentId` 应为 `null`
-- 节点必须带 `treeId`
+- 删除分组前，如果分组下仍有树，会返回业务错误；需要先移动或删除这些树。
+- 删除树时，在事务内删除该树下节点、节点标签、学习反思，以及涉及这些节点的知识连接，再删除树实例。
+- 删除节点时，在事务内删除该节点子树、相关标签、反思和起点/终点涉及该子树的连接。
 
-示例：
+树本身不是 `user_syllabus_node`。在树根下新增一级节点时，`parentId` 传 `null`，并且必须传 `treeId`：
 
 ```http
 POST /api/learning/nodes
@@ -187,25 +183,46 @@ Content-Type: application/json
 - `GET /api/syllabus/tree`
 - `POST /api/syllabus/nodes`
 - `GET /api/study-groups`
+- `GET /api/study-groups/{id}`
 - `POST /api/study-groups`
 - `PUT /api/study-groups/{id}`
 - `DELETE /api/study-groups/{id}`
 - `GET /api/study-trees`
+- `GET /api/study-trees/{id}`
+- `GET /api/study-trees/{id}/children`
 - `POST /api/study-trees`
 - `PUT /api/study-trees/{id}`
 - `DELETE /api/study-trees/{id}`
-- `GET /api/study-trees/{id}`
-- `GET /api/study-trees/{id}/children`
 - `GET /api/learning/tree?treeId=1`
 - `POST /api/learning/import-official?treeId=1`
 - `POST /api/learning/nodes`
+- `GET /api/learning/nodes/{id}`
 - `PUT /api/learning/nodes/{id}`
+- `DELETE /api/learning/nodes/{id}`
+- `PUT /api/learning/nodes/{id}/icon`
 - `POST /api/learning/nodes/{id}/review`
+- `GET /api/learning/nodes/{id}/tags`
+- `POST /api/learning/nodes/{id}/tags`
+- `GET /api/learning/tags/{tagId}`
+- `PUT /api/learning/tags/{tagId}`
+- `DELETE /api/learning/tags/{tagId}`
+- `GET /api/learning/connections?treeId=1`
+- `GET /api/learning/connections/{connectionId}`
+- `POST /api/learning/connections`
+- `PUT /api/learning/connections/{connectionId}`
+- `DELETE /api/learning/connections/{connectionId}`
 - `GET /api/community/posts`
 - `POST /api/community/posts`
 - `GET /api/community/admin/posts`
 - `PUT /api/community/admin/posts/{id}/status`
 - `POST /api/agent/assist`
+
+## 前端接入提示
+
+- 切树：先调用 `GET /api/study-trees` 获取当前用户树列表，再把选中的 `tree.id` 传给 `GET /api/learning/tree?treeId=...`、`GET /api/learning/connections?treeId=...`。
+- 树根下新增一级节点：调用 `POST /api/learning/nodes`，请求体带 `treeId` 且 `parentId: null`。
+- 分组删除：如果后端返回“该分组下仍有考研树”，前端应提示用户先移动或删除分组内树。
+- 树删除：删除会级联清理该树下节点、标签、反思和知识连接，前端建议做二次确认。
 
 ## 下一步建议
 

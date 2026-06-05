@@ -123,6 +123,10 @@ export function getStudyGroups() {
   return request<StudyGroup[]>('/api/study-groups')
 }
 
+export function getStudyGroup(id: number) {
+  return request<StudyGroup>(`/api/study-groups/${id}`)
+}
+
 export function createStudyGroup(payload: { name: string; description?: string; sortOrder?: number }) {
   return request<StudyGroup>('/api/study-groups', {
     method: 'POST',
@@ -211,6 +215,10 @@ export async function createLearningNode(payload: {
   })
 }
 
+export function getLearningNode(id: number) {
+  return request<LearningNode>(`/api/learning/nodes/${id}`)
+}
+
 export function updateLearningNode(
   id: number,
   payload: {
@@ -232,6 +240,10 @@ export function reviewLearningNode(id: number) {
   return request<LearningNode>(`/api/learning/nodes/${id}/review`, { method: 'POST' })
 }
 
+export function deleteLearningNode(id: number) {
+  return request<void>(`/api/learning/nodes/${id}`, { method: 'DELETE' })
+}
+
 export function updateLearningNodeIcon(id: number, iconKey: string | null) {
   return request<LearningNode>(`/api/learning/nodes/${id}/icon`, {
     method: 'PUT',
@@ -241,6 +253,10 @@ export function updateLearningNodeIcon(id: number, iconKey: string | null) {
 
 export function getLearningNodeTags(id: number) {
   return request<LearningNodeTag[]>(`/api/learning/nodes/${id}/tags`)
+}
+
+export function getLearningNodeTag(tagId: number) {
+  return request<LearningNodeTag>(`/api/learning/tags/${tagId}`)
 }
 
 export function createLearningNodeTag(id: number, payload: { name: string; color?: string }) {
@@ -261,8 +277,13 @@ export function deleteLearningNodeTag(tagId: number) {
   return request<void>(`/api/learning/tags/${tagId}`, { method: 'DELETE' })
 }
 
-export function getLearningConnections() {
-  return request<LearningNodeConnection[]>('/api/learning/connections')
+export function getLearningConnections(treeId?: number) {
+  const query = treeId ? `?treeId=${treeId}` : ''
+  return request<LearningNodeConnection[]>(`/api/learning/connections${query}`)
+}
+
+export function getLearningConnection(connectionId: number) {
+  return request<LearningNodeConnection>(`/api/learning/connections/${connectionId}`)
 }
 
 export function createLearningConnection(payload: {

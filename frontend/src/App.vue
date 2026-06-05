@@ -1,5 +1,5 @@
 <template>
-  <main class="tree-explorer" :class="{ 'modal-open': detailOpen }">
+  <main class="tree-explorer" :class="{ 'modal-open': detailOpen, 'sidebar-collapsed': sidebarCollapsed }">
     <div class="tree-atmosphere" aria-hidden="true"></div>
 
     <header class="tree-topbar">
@@ -18,7 +18,7 @@
       <div class="top-actions">
         <span v-if="currentUser" class="user-chip">
           <Shield :size="15" />
-          <b>{{ currentUser.displayName }}</b>
+          <b>{{ displayNameText }}</b>
           <i>{{ roleText(currentUser.role) }}</i>
         </span>
         <button class="text-action tool-action" type="button" title="让当前知识树回到画布中心" @click="fitView">
@@ -58,7 +58,27 @@
       {{ pageSuccess }}
     </div>
 
-    <aside class="tree-index">
+    <aside class="tree-index" :class="{ collapsed: sidebarCollapsed }">
+      <button
+        class="sidebar-toggle"
+        type="button"
+        :title="sidebarCollapsed ? '展开左侧栏' : '收起左侧栏'"
+        @click="sidebarCollapsed = !sidebarCollapsed"
+      >
+        <component :is="sidebarCollapsed ? ChevronRight : ChevronLeft" :size="17" />
+        <span>{{ sidebarCollapsed ? '展开' : '收起' }}</span>
+      </button>
+
+      <div v-if="sidebarCollapsed" class="sidebar-rail">
+        <strong>{{ currentTree?.name || '知识树' }}</strong>
+        <div class="sidebar-rail-meta">
+          <span>{{ stats.total }} 个节点</span>
+          <span v-if="currentTree?.description">{{ currentTree.description }}</span>
+          <span v-if="selectedNode">当前节点：{{ selectedNode.title }}</span>
+        </div>
+      </div>
+
+      <template v-else>
       <section class="student-mark nav-block block-intro">
         <p>Study Workspace</p>
         <strong>考研辅助系统</strong>
@@ -68,7 +88,7 @@
       <section class="tree-manager nav-block block-group">
         <div class="section-heading">
           <span>树分组</span>
-          <button class="line-action" type="button" :disabled="createGroupLoading || !groupDraft.name.trim()" @click="handleCreateGroup">
+          <button class="line-action" type="button" :disabled="createGroupLoading" @click="openGroupForm">
             新建分组
           </button>
         </div>
@@ -84,16 +104,24 @@
             {{ group.name }}
           </button>
         </div>
-        <label class="field-line compact">
-          <span>分组名</span>
-          <input v-model="groupDraft.name" type="text" placeholder="例如：公共课 / 专业课" />
-        </label>
+        <div v-if="groupFormOpen" class="inline-form">
+          <label class="field-line compact">
+            <span>分组名</span>
+            <input v-model="groupDraft.name" type="text" placeholder="例如：公共课 / 专业课" />
+          </label>
+          <div class="form-actions">
+            <button class="line-action" type="button" @click="cancelGroupForm">取消</button>
+            <button class="line-action primary" type="button" :disabled="createGroupLoading || !groupDraft.name.trim()" @click="handleCreateGroup">
+              创建分组
+            </button>
+          </div>
+        </div>
       </section>
 
       <section class="tree-manager nav-block block-tree">
         <div class="section-heading">
           <span>考研树</span>
-          <button class="line-action" type="button" :disabled="createTreeLoading || !treeDraft.name.trim()" @click="handleCreateTree">
+          <button class="line-action" type="button" :disabled="createTreeLoading" @click="openTreeForm">
             新建树
           </button>
         </div>
@@ -115,14 +143,22 @@
             还没有树，先新建一棵。
           </div>
         </div>
-        <label class="field-line compact">
-          <span>树名称</span>
-          <input v-model="treeDraft.name" type="text" placeholder="例如：408 / 高等数学 / 英语一" />
-        </label>
-        <label class="field-line compact">
-          <span>说明</span>
-          <input v-model="treeDraft.description" type="text" placeholder="可选，写这棵树的用途" />
-        </label>
+        <div v-if="treeFormOpen" class="inline-form">
+          <label class="field-line compact">
+            <span>树名称</span>
+            <input v-model="treeDraft.name" type="text" placeholder="例如：408 / 高等数学 / 英语一" />
+          </label>
+          <label class="field-line compact">
+            <span>说明</span>
+            <input v-model="treeDraft.description" type="text" placeholder="可选，写这棵树的用途" />
+          </label>
+          <div class="form-actions">
+            <button class="line-action" type="button" @click="cancelTreeForm">取消</button>
+            <button class="line-action primary" type="button" :disabled="createTreeLoading || !treeDraft.name.trim()" @click="handleCreateTree">
+              创建树
+            </button>
+          </div>
+        </div>
       </section>
 
       <nav class="view-switch nav-block block-mode" aria-label="知识树视图">
@@ -154,22 +190,35 @@
         <div class="section-heading">
           <span>树根扩展</span>
           <button
-            class="line-action primary"
+            class="line-action"
             type="button"
-            :disabled="createNodeLoading || !rootDraft.title.trim() || !currentUser || !activeTreeId"
-            @click="handleCreateRootNode"
+            :disabled="!currentUser || !activeTreeId"
+            @click="openRootForm"
           >
             新增一级节点
           </button>
         </div>
-        <label class="field-line compact">
-          <span>一级节点标题</span>
-          <input v-model="rootDraft.title" type="text" placeholder="例如：高等数学" />
-        </label>
-        <label class="field-line compact">
-          <span>层级标签</span>
-          <input v-model="rootDraft.label" type="text" placeholder="默认：第 1 级" />
-        </label>
+        <div v-if="rootFormOpen" class="inline-form">
+          <label class="field-line compact">
+            <span>一级节点标题</span>
+            <input v-model="rootDraft.title" type="text" placeholder="例如：高等数学" />
+          </label>
+          <label class="field-line compact">
+            <span>层级标签</span>
+            <input v-model="rootDraft.label" type="text" placeholder="默认：第 1 级" />
+          </label>
+          <div class="form-actions">
+            <button class="line-action" type="button" @click="cancelRootForm">取消</button>
+            <button
+              class="line-action primary"
+              type="button"
+              :disabled="createNodeLoading || !rootDraft.title.trim() || !currentUser || !activeTreeId"
+              @click="handleCreateRootNode"
+            >
+              创建节点
+            </button>
+          </div>
+        </div>
       </section>
 
       <section class="root-thread nav-block block-root-list">
@@ -192,13 +241,14 @@
           当前树还没有一级节点。
         </div>
       </section>
+      </template>
     </aside>
 
     <section
       ref="stageRef"
       class="tree-stage"
       :class="{ dragging: dragState.dragging }"
-      @contextmenu.prevent
+      @contextmenu.prevent="closeNodeContextMenu"
       @pointerdown="startPan"
       @pointermove="movePan"
       @pointerup="endPan"
@@ -232,6 +282,7 @@
         <span><i class="active"></i>学习中</span>
         <span><i class="mastered"></i>已掌握</span>
         <span><i class="weak"></i>薄弱</span>
+        <span><i class="connection"></i>知识连接</span>
       </div>
 
       <div class="world-viewport">
@@ -299,6 +350,7 @@
             @focus="hoveredVisualId = item.id"
             @blur="hoveredVisualId = null"
             @click.stop="item.node ? handleNodeClick(item.node) : fitView()"
+            @contextmenu.stop.prevent="item.node ? openNodeContextMenu($event, item.node) : undefined"
           >
             <span class="node-halo"></span>
             <span class="node-core">
@@ -325,6 +377,74 @@
         </div>
       </div>
     </section>
+
+    <Transition name="context-menu">
+      <section
+        v-if="nodeContextMenu.open && nodeContextMenuNode"
+        class="node-context-menu"
+        :style="{
+          left: `${nodeContextMenu.x}px`,
+          top: `${nodeContextMenu.y}px`
+        }"
+        @contextmenu.prevent
+        @pointerdown.stop
+      >
+        <header class="context-menu-head">
+          <strong>{{ nodeContextMenuNode.title }}</strong>
+          <span>{{ nodeContextMenuNode.label }} · 第 {{ nodeContextMenuNode.levelNo }} 级</span>
+        </header>
+
+        <div class="context-menu-actions">
+          <button type="button" @click="openNodeDetailFromMenu">
+            <BookOpen :size="15" />
+            <span>打开详情</span>
+          </button>
+          <button type="button" @click="startQuickCreate('child')">
+            <GitBranch :size="15" />
+            <span>新增下级</span>
+          </button>
+          <button type="button" @click="startQuickCreate('sibling')">
+            <Layers3 :size="15" />
+            <span>新增同级</span>
+          </button>
+          <button type="button" @click="beginConnectionFromContextMenu">
+            <Cable :size="15" />
+            <span>发起连接</span>
+          </button>
+          <button type="button" :disabled="loading" @click="handleReviewFromMenu">
+            <CheckCircle2 :size="15" />
+            <span>记录复习</span>
+          </button>
+        </div>
+
+        <form v-if="quickCreateMode" class="context-quick-create" @submit.prevent="handleQuickCreate">
+          <p>{{ quickCreateMode === 'child' ? '快速新增下级节点' : '快速新增同级节点' }}</p>
+          <label>
+            <span>标题</span>
+            <input
+              ref="quickCreateInputRef"
+              v-model="quickCreateDraft.title"
+              type="text"
+              :placeholder="quickCreateMode === 'child' ? '例如：页面置换算法' : '例如：存储器层次结构'"
+            />
+          </label>
+          <label>
+            <span>标签</span>
+            <input
+              v-model="quickCreateDraft.label"
+              type="text"
+              :placeholder="quickCreatePlaceholder"
+            />
+          </label>
+          <div class="context-quick-actions">
+            <button type="button" @click="cancelQuickCreate">取消</button>
+            <button type="submit" :disabled="createNodeLoading || !quickCreateDraft.title.trim()">
+              {{ createNodeLoading ? '创建中' : '立即创建' }}
+            </button>
+          </div>
+        </form>
+      </section>
+    </Transition>
 
     <Transition name="node-modal">
       <section
@@ -379,15 +499,29 @@
                   新增标签
                 </button>
               </div>
-              <div style="display: grid; gap: 8px; margin-bottom: 10px;">
+              <div style="display: grid; gap: 10px; margin-bottom: 10px;">
                 <label class="field-line compact">
                   <span>新标签名</span>
                   <input v-model="tagDraft.name" type="text" placeholder="例如：错题 / 高频 / 二刷" />
                 </label>
-                <label class="field-line compact">
+                <div class="field-line compact">
                   <span>颜色</span>
-                  <input v-model="tagDraft.color" type="color" style="width: 54px; min-height: 34px; padding: 2px;" />
-                </label>
+                  <div class="swatch-row">
+                    <button
+                      v-for="color in tagColorPresets"
+                      :key="color"
+                      class="color-swatch"
+                      :class="{ active: tagDraft.color === color }"
+                      type="button"
+                      :style="{ '--swatch-color': color }"
+                      @click="tagDraft.color = color"
+                    ></button>
+                    <label class="custom-color-chip" :style="{ '--swatch-color': tagDraft.color }">
+                      <Palette :size="14" />
+                      <input v-model="tagDraft.color" type="color" aria-label="自定义标签颜色" />
+                    </label>
+                  </div>
+                </div>
               </div>
               <div class="tag-flow">
                 <span
@@ -395,7 +529,7 @@
                   :key="tag.id"
                   class="tag-line"
                   :style="{ '--tag-color': tag.color }"
-                  style="display: inline-grid; grid-template-columns: auto auto auto; gap: 6px; align-items: center;"
+                  style="display: inline-grid; grid-template-columns: minmax(0, 96px) auto auto; gap: 8px; align-items: center;"
                 >
                   <input
                     v-model="tagEditDraft[tag.id].name"
@@ -403,12 +537,13 @@
                     aria-label="标签名"
                     style="width: 86px; min-height: 26px; color: inherit; background: transparent; border: 0; border-bottom: 1px solid currentColor;"
                   />
-                  <input
-                    v-model="tagEditDraft[tag.id].color"
-                    type="color"
-                    aria-label="标签颜色"
-                    style="width: 26px; height: 24px; padding: 0; border: 0; background: transparent;"
-                  />
+                  <label class="mini-color-chip" :style="{ '--swatch-color': tagEditDraft[tag.id].color }">
+                    <input
+                      v-model="tagEditDraft[tag.id].color"
+                      type="color"
+                      aria-label="标签颜色"
+                    />
+                  </label>
                   <span style="display: inline-flex; gap: 4px;">
                     <button class="line-action" type="button" :disabled="tagSaving" @click="handleUpdateTag(tag)">改</button>
                     <button class="line-action" type="button" :disabled="tagSaving" @click="handleDeleteTag(tag)">删</button>
@@ -420,11 +555,12 @@
 
             <section class="sheet-section">
               <div class="section-heading">
-                <span>节点连接</span>
+                <span>知识连接</span>
                 <button class="line-action" type="button" :disabled="connectionSaving" @click="beginConnectionFromSelected">
-                  从此节点发起
+                  发起连接
                 </button>
               </div>
+              <p class="metric-note">黄色虚线表示你手动建立的知识连接。先从一个节点发起连接，再点击画布上的另一个节点即可添加。</p>
               <label class="field-line compact">
                 <span>关系类型</span>
                 <input v-model="connectionDraft.relationType" type="text" placeholder="RELATED / DEPENDS_ON / SIMILAR" />
@@ -604,6 +740,8 @@ import {
   Boxes,
   BrainCircuit,
   Cable,
+  ChevronLeft,
+  ChevronRight,
   CheckCircle2,
   CircuitBoard,
   Circle,
@@ -617,6 +755,7 @@ import {
   MemoryStick,
   Minus,
   Network,
+  Palette,
   Plus,
   RefreshCw,
   Route,
@@ -735,6 +874,11 @@ const authError = ref('')
 const pageError = ref('')
 const pageSuccess = ref('')
 const nodeIconMap = ref<Record<number, string>>(loadNodeIconMap())
+const sidebarCollapsed = ref(false)
+const quickCreateInputRef = ref<HTMLInputElement | null>(null)
+const groupFormOpen = ref(false)
+const treeFormOpen = ref(false)
+const rootFormOpen = ref(false)
 let successTimer: ReturnType<typeof setTimeout> | null = null
 
 const viewport = reactive({
@@ -795,6 +939,21 @@ const connectionDraft = reactive({
   label: ''
 })
 
+const nodeContextMenu = reactive({
+  open: false,
+  x: 0,
+  y: 0,
+  nodeId: null as number | null
+})
+
+const quickCreateDraft = reactive({
+  title: '',
+  label: ''
+})
+
+const quickCreateMode = ref<'child' | 'sibling' | null>(null)
+const tagColorPresets = ['#6bfb9a', '#7cc8d6', '#ffd36b', '#e2a19b', '#a78bfa', '#f472b6', '#fb7185', '#22c55e']
+
 const statusOptions: Array<{ value: LearningStatus; label: string }> = [
   { value: 'NOT_STARTED', label: '未开始' },
   { value: 'IN_PROGRESS', label: '学习中' },
@@ -837,6 +996,13 @@ const filteredStudyTrees = computed(() => {
 })
 
 const currentTree = computed(() => studyTrees.value.find((item) => item.id === activeTreeId.value) || null)
+const displayNameText = computed(() => {
+  const raw = currentUser.value?.displayName?.trim() || ''
+  if (!raw || /^\?+$/.test(raw)) {
+    return currentUser.value?.username === 'candidate' ? '考研考生' : currentUser.value?.username || '用户'
+  }
+  return raw
+})
 const flatNodes = computed(() => flatten(tree.value))
 const displayTree = computed(() => filterTree(tree.value))
 const selectedRootId = computed(() => findRootId(selectedNode.value))
@@ -881,6 +1047,19 @@ const selectedNodeConnections = computed(() => {
   return connections.value.filter((connection) =>
     connection.sourceNodeId === selectedNode.value?.id || connection.targetNodeId === selectedNode.value?.id
   )
+})
+const nodeContextMenuNode = computed(() =>
+  nodeContextMenu.nodeId ? flatNodes.value.find((node) => node.id === nodeContextMenu.nodeId) || null : null
+)
+const quickCreatePlaceholder = computed(() => {
+  const node = nodeContextMenuNode.value
+  if (!node) {
+    return '默认使用当前层级标签'
+  }
+  if (quickCreateMode.value === 'child') {
+    return `默认：第 ${node.levelNo + 1} 级`
+  }
+  return `默认：${node.label || `第 ${node.levelNo} 级`}`
 })
 const connectionSourceNode = computed(() =>
   connectionSourceNodeId.value ? flatNodes.value.find((node) => node.id === connectionSourceNodeId.value) || null : null
@@ -969,14 +1148,23 @@ watch(selectedNode, () => {
 watch(displayTree, () => nextTick(fitView), { flush: 'post' })
 watch(detailOpen, (open) => {
   document.body.classList.toggle('tree-modal-open', open)
+  if (open) {
+    closeNodeContextMenu()
+  }
 })
 onMounted(async () => {
+  window.addEventListener('pointerdown', handleGlobalPointerDown)
+  window.addEventListener('resize', closeNodeContextMenu)
+  window.addEventListener('keydown', handleGlobalKeydown)
   await bootstrapSession()
   await nextTick()
   fitView()
 })
 
 onUnmounted(() => {
+  window.removeEventListener('pointerdown', handleGlobalPointerDown)
+  window.removeEventListener('resize', closeNodeContextMenu)
+  window.removeEventListener('keydown', handleGlobalKeydown)
   document.body.classList.remove('tree-modal-open')
   if (successTimer) {
     clearTimeout(successTimer)
@@ -1063,6 +1251,7 @@ async function handleSelectTree(treeId: number) {
   if (treeId === activeTreeId.value) {
     return
   }
+  closeNodeContextMenu()
   activeTreeId.value = treeId
   const matched = studyTrees.value.find((item) => item.id === treeId)
   if (matched) {
@@ -1077,6 +1266,7 @@ async function handleSelectTree(treeId: number) {
 }
 
 async function handleSelectGroup(groupId: number | null) {
+  closeNodeContextMenu()
   activeGroupId.value = groupId
   if (groupId === null) {
     if (studyTrees.value.length && !studyTrees.value.some((item) => item.id === activeTreeId.value)) {
@@ -1102,6 +1292,7 @@ async function handleImport() {
   if (!currentUser.value || !activeTreeId.value) {
     return
   }
+  closeNodeContextMenu()
   loading.value = true
   pageError.value = ''
   try {
@@ -1119,6 +1310,7 @@ async function handleImport() {
 }
 
 async function handleLogin() {
+  closeNodeContextMenu()
   authLoading.value = true
   authError.value = ''
   pageError.value = ''
@@ -1136,6 +1328,7 @@ async function handleLogin() {
 }
 
 function handleLogout() {
+  closeNodeContextMenu()
   clearAuthSession()
   currentUser.value = null
   studyGroups.value = []
@@ -1157,6 +1350,7 @@ async function handleCreateGroup() {
   if (!groupDraft.name.trim()) {
     return
   }
+  closeNodeContextMenu()
   createGroupLoading.value = true
   pageError.value = ''
   try {
@@ -1165,6 +1359,7 @@ async function handleCreateGroup() {
       sortOrder: studyGroups.value.length * 10 + 10
     })
     groupDraft.name = ''
+    groupFormOpen.value = false
     await loadStudyWorkspace(activeTreeId.value ?? undefined)
     activeGroupId.value = created.id
     flashSuccess('已新建分组。')
@@ -1179,6 +1374,7 @@ async function handleCreateTree() {
   if (!treeDraft.name.trim()) {
     return
   }
+  closeNodeContextMenu()
   createTreeLoading.value = true
   pageError.value = ''
   try {
@@ -1190,6 +1386,7 @@ async function handleCreateTree() {
     })
     treeDraft.name = ''
     treeDraft.description = ''
+    treeFormOpen.value = false
     await loadStudyWorkspace(created.id)
     flashSuccess('已新建考研树。')
     await nextTick()
@@ -1201,13 +1398,162 @@ async function handleCreateTree() {
   }
 }
 
+function openNodeContextMenu(event: MouseEvent, node: LearningNode) {
+  selectedNode.value = node
+  detailOpen.value = false
+  agentAnswer.value = null
+  quickCreateMode.value = null
+  quickCreateDraft.title = ''
+  quickCreateDraft.label = ''
+
+  const menuWidth = 308
+  const menuHeight = 280
+  const padding = 18
+  const maxX = Math.max(padding, window.innerWidth - menuWidth - padding)
+  const maxY = Math.max(padding, window.innerHeight - menuHeight - padding)
+
+  nodeContextMenu.x = clamp(event.clientX + 12, padding, maxX)
+  nodeContextMenu.y = clamp(event.clientY - 10, padding, maxY)
+  nodeContextMenu.nodeId = node.id
+  nodeContextMenu.open = true
+}
+
+function closeNodeContextMenu() {
+  nodeContextMenu.open = false
+  nodeContextMenu.nodeId = null
+  quickCreateMode.value = null
+  quickCreateDraft.title = ''
+  quickCreateDraft.label = ''
+}
+
+function openNodeDetailFromMenu() {
+  const node = nodeContextMenuNode.value
+  if (!node) {
+    return
+  }
+  closeNodeContextMenu()
+  openNodeDetail(node)
+}
+
+function startQuickCreate(mode: 'child' | 'sibling') {
+  const node = nodeContextMenuNode.value
+  if (!node) {
+    return
+  }
+  quickCreateMode.value = mode
+  quickCreateDraft.title = ''
+  quickCreateDraft.label =
+    mode === 'child'
+      ? `第 ${node.levelNo + 1} 级`
+      : node.label || `第 ${node.levelNo} 级`
+  nextTick(() => quickCreateInputRef.value?.focus())
+}
+
+function cancelQuickCreate() {
+  quickCreateMode.value = null
+  quickCreateDraft.title = ''
+  quickCreateDraft.label = ''
+}
+
+async function handleQuickCreate() {
+  const baseNode = nodeContextMenuNode.value
+  if (!baseNode || !quickCreateMode.value || !quickCreateDraft.title.trim()) {
+    return
+  }
+
+  const isChild = quickCreateMode.value === 'child'
+  const siblingNodes = flatNodes.value.filter((node) => node.parentId === baseNode.parentId)
+  const parentNode = isChild ? baseNode : flatNodes.value.find((node) => node.id === baseNode.parentId) || null
+  const labelFallback = isChild
+    ? `第 ${baseNode.levelNo + 1} 级`
+    : baseNode.label || `第 ${baseNode.levelNo} 级`
+
+  createNodeLoading.value = true
+  pageError.value = ''
+  try {
+    const created = await createLearningNode({
+      treeId: baseNode.treeId || activeTreeId.value || undefined,
+      parentId: isChild ? baseNode.id : baseNode.parentId ?? null,
+      title: quickCreateDraft.title.trim(),
+      label: quickCreateDraft.label.trim() || labelFallback,
+      sortOrder: (isChild ? baseNode.children.length : siblingNodes.length) * 10 + 10
+    })
+    closeNodeContextMenu()
+    await reloadTreeAndSelect(created.id)
+    if (parentNode) {
+      selectedNode.value = flatNodes.value.find((node) => node.id === created.id) || selectedNode.value
+    }
+    flashSuccess(isChild ? '已快速新增下级节点。' : '已快速新增同级节点。')
+  } catch (error) {
+    handleApiProblem(error, isChild ? '快速新增下级节点失败' : '快速新增同级节点失败')
+  } finally {
+    createNodeLoading.value = false
+  }
+}
+
+async function handleReviewFromMenu() {
+  const node = nodeContextMenuNode.value
+  if (!node) {
+    return
+  }
+  selectedNode.value = node
+  closeNodeContextMenu()
+  await handleReview()
+}
+
 function openNodeDetail(node: LearningNode) {
   selectedNode.value = node
   detailOpen.value = true
   agentAnswer.value = null
 }
 
+function openGroupForm() {
+  treeFormOpen.value = false
+  rootFormOpen.value = false
+  groupFormOpen.value = true
+}
+
+function cancelGroupForm() {
+  groupDraft.name = ''
+  groupFormOpen.value = false
+}
+
+function openTreeForm() {
+  groupFormOpen.value = false
+  rootFormOpen.value = false
+  treeFormOpen.value = true
+}
+
+function cancelTreeForm() {
+  treeDraft.name = ''
+  treeDraft.description = ''
+  treeFormOpen.value = false
+}
+
+function openRootForm() {
+  groupFormOpen.value = false
+  treeFormOpen.value = false
+  rootFormOpen.value = true
+}
+
+function cancelRootForm() {
+  rootDraft.title = ''
+  rootDraft.label = ''
+  rootFormOpen.value = false
+}
+
+function beginConnectionFromContextMenu() {
+  const node = nodeContextMenuNode.value
+  if (!node) {
+    return
+  }
+  selectedNode.value = node
+  closeNodeContextMenu()
+  beginConnectionFromSelected()
+}
+
 function handleNodeClick(node: LearningNode) {
+  closeNodeContextMenu()
   if (connectionSourceNodeId.value && connectionSourceNodeId.value !== node.id) {
     handleCreateConnection(node)
     return
@@ -1220,6 +1566,7 @@ function closeNodeDetail() {
 }
 
 function jumpToNode(node: LearningNode) {
+  closeNodeContextMenu()
   selectedNode.value = node
   detailOpen.value = false
   agentAnswer.value = null
@@ -1256,7 +1603,7 @@ function applySelectedNodeTags(tags: LearningNodeTag[]) {
   if (!selectedNode.value) {
     return
   }
-  const nextNode = { ...selectedNode.value, tags }
+  const nextNode = normalizeLearningNode({ ...selectedNode.value, tags })
   selectedNode.value = nextNode
   patchNode(nextNode)
   syncTagDrafts()
@@ -1330,8 +1677,8 @@ async function handleSave() {
   pageError.value = ''
   try {
     const saved = await updateLearningNode(selectedNode.value.id, { ...draft })
-    patchNode(saved)
-    selectedNode.value = { ...saved, children: selectedNode.value.children }
+    selectedNode.value = mergeSelectedNodeSnapshot(saved)
+    patchNode(selectedNode.value)
     closeNodeDetail()
     flashSuccess('节点内容已保存。')
   } catch (error) {
@@ -1346,8 +1693,8 @@ async function handleReview() {
   pageError.value = ''
   try {
     const saved = await reviewLearningNode(selectedNode.value.id)
-    patchNode(saved)
-    selectedNode.value = { ...saved, children: selectedNode.value.children }
+    selectedNode.value = mergeSelectedNodeSnapshot(saved)
+    patchNode(selectedNode.value)
     flashSuccess('已记录一次复习。')
   } catch (error) {
     handleApiProblem(error, '记录复习次数失败')
@@ -1358,6 +1705,7 @@ async function handleCreateChild() {
   if (!selectedNode.value || !childDraft.title.trim()) {
     return
   }
+  closeNodeContextMenu()
   createNodeLoading.value = true
   pageError.value = ''
   try {
@@ -1384,6 +1732,7 @@ async function handleCreateRootNode() {
   if (!rootDraft.title.trim() || !activeTreeId.value) {
     return
   }
+  closeNodeContextMenu()
   createNodeLoading.value = true
   pageError.value = ''
   try {
@@ -1396,6 +1745,7 @@ async function handleCreateRootNode() {
     })
     rootDraft.title = ''
     rootDraft.label = ''
+    rootFormOpen.value = false
     await reloadTreeAndSelect(created.id)
     flashSuccess('已新增一级节点。')
   } catch (error) {
@@ -1598,6 +1948,7 @@ function startPan(event: PointerEvent) {
   if ((event.target as HTMLElement).closest('button, input, textarea')) {
     return
   }
+  closeNodeContextMenu()
   dragState.dragging = true
   dragState.startX = event.clientX
   dragState.startY = event.clientY
@@ -1663,6 +2014,30 @@ function fitView() {
   viewport.y = (rect.height - canvasSize.value.height * viewport.scale) / 2 + 20
 }
 
+function handleGlobalPointerDown(event: PointerEvent) {
+  const target = event.target as HTMLElement | null
+  if (!target) {
+    closeNodeContextMenu()
+    return
+  }
+  if (target.closest('.node-context-menu')) {
+    return
+  }
+  closeNodeContextMenu()
+}
+
+function handleGlobalKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    if (nodeContextMenu.open) {
+      closeNodeContextMenu()
+      return
+    }
+    if (detailOpen.value) {
+      closeNodeDetail()
+    }
+  }
+}
+
 function centerVisualNode(item: VisualNode) {
   const stage = stageRef.value
   if (!stage) {
@@ -1676,8 +2051,33 @@ function centerVisualNode(item: VisualNode) {
 function patchNode(next: LearningNode) {
   const current = flatNodes.value.find((node) => node.id === next.id)
   if (current) {
-    Object.assign(current, next, { children: current.children })
+    Object.assign(current, normalizeLearningNode(next), {
+      tags: next.tags ?? current.tags ?? [],
+      children: next.children ?? current.children ?? []
+    })
   }
+}
+
+function normalizeLearningNode(node: Partial<LearningNode>) {
+  return {
+    ...node,
+    tags: Array.isArray(node.tags) ? node.tags : [],
+    children: Array.isArray(node.children) ? node.children : []
+  } as LearningNode
+}
+
+function mergeSelectedNodeSnapshot(node: Partial<LearningNode>) {
+  const current = selectedNode.value
+  const normalized = normalizeLearningNode(node)
+  if (!current) {
+    return normalized
+  }
+  return normalizeLearningNode({
+    ...current,
+    ...normalized,
+    tags: normalized.tags.length ? normalized.tags : current.tags ?? [],
+    children: normalized.children.length ? normalized.children : current.children ?? []
+  })
 }
 
 function filterTree(nodes: LearningNode[]): LearningNode[] {
@@ -1793,6 +2193,28 @@ function buildOrganicLayout(nodes: LearningNode[], width: number, height: number
     placeChildren(node, visual, 2, index * 17 + 5, lean)
   })
 
+  spreadVisualNodes(visualNodes, width)
+
+  const visualNodeMap = new Map(visualNodes.map((item) => [item.id, item]))
+  links.forEach((item) => {
+    const parent = visualNodeMap.get(item.parentId)
+    const child = visualNodeMap.get(item.childId)
+    if (parent && child) {
+      item.path = branchPath(parent.x, parent.y, child.x, child.y)
+    }
+  })
+  rings.forEach((ring) => {
+    if (!ring.id.startsWith('ring-')) {
+      return
+    }
+    const nodeId = Number(ring.id.replace('ring-', ''))
+    const visual = visualNodeMap.get(`node-${nodeId}`)
+    if (visual) {
+      ring.x = visual.x
+      ring.y = visual.y
+    }
+  })
+
   return {
     nodes: visualNodes.sort((a, b) => a.depth - b.depth),
     links,
@@ -1810,6 +2232,71 @@ function branchPath(x1: number, y1: number, x2: number, y2: number) {
   const c2x = x2 - dx * 0.24 - sway
   const c2y = y2 + dy * 0.34 + Math.sign(dx || 1) * 24
   return `M ${x1} ${y1} C ${c1x} ${c1y}, ${c2x} ${c2y}, ${x2} ${y2}`
+}
+
+function spreadVisualNodes(nodes: VisualNode[], width: number) {
+  const padding = 250
+  const grouped = new Map<number, VisualNode[]>()
+
+  nodes.forEach((item) => {
+    if (item.kind !== 'real' || !item.node) {
+      return
+    }
+    if (!grouped.has(item.depth)) {
+      grouped.set(item.depth, [])
+    }
+    grouped.get(item.depth)?.push(item)
+  })
+
+  grouped.forEach((items, depth) => {
+    if (items.length < 2) {
+      return
+    }
+
+    const minGap = depth <= 1 ? 240 : depth === 2 ? 206 : depth === 3 ? 178 : 150
+    const leftBound = padding
+    const rightBound = width - padding
+
+    for (let pass = 0; pass < 2; pass += 1) {
+      items.sort((a, b) => a.x - b.x)
+
+      for (let index = 1; index < items.length; index += 1) {
+        const previous = items[index - 1]
+        const current = items[index]
+        const sameParent = previous.node?.parentId && previous.node.parentId === current.node?.parentId
+        const requiredGap = sameParent ? minGap + 28 : minGap
+
+        if (current.x - previous.x < requiredGap) {
+          current.x = previous.x + requiredGap
+        }
+      }
+
+      const overflow = items[items.length - 1].x - rightBound
+      if (overflow > 0) {
+        items.forEach((item) => {
+          item.x -= overflow
+        })
+      }
+
+      for (let index = items.length - 2; index >= 0; index -= 1) {
+        const current = items[index]
+        const next = items[index + 1]
+        const sameParent = current.node?.parentId && current.node.parentId === next.node?.parentId
+        const requiredGap = sameParent ? minGap + 28 : minGap
+
+        if (next.x - current.x < requiredGap) {
+          current.x = next.x - requiredGap
+        }
+      }
+
+      const underflow = leftBound - items[0].x
+      if (underflow > 0) {
+        items.forEach((item) => {
+          item.x += underflow
+        })
+      }
+    }
+  })
 }
 
 function connectionPath(x1: number, y1: number, x2: number, y2: number) {
@@ -1893,8 +2380,8 @@ async function chooseNodeIcon(key: string) {
   pageError.value = ''
   try {
     const saved = await updateLearningNodeIcon(selectedNode.value.id, key)
-    patchNode(saved)
-    selectedNode.value = { ...saved, children: selectedNode.value.children }
+    selectedNode.value = mergeSelectedNodeSnapshot(saved)
+    patchNode(selectedNode.value)
     nodeIconMap.value = {
       ...nodeIconMap.value,
       [selectedNode.value.id]: key
@@ -1915,8 +2402,8 @@ async function clearNodeIcon() {
   pageError.value = ''
   try {
     const saved = await updateLearningNodeIcon(selectedNode.value.id, null)
-    patchNode(saved)
-    selectedNode.value = { ...saved, children: selectedNode.value.children }
+    selectedNode.value = mergeSelectedNodeSnapshot(saved)
+    patchNode(selectedNode.value)
     const next = { ...nodeIconMap.value }
     delete next[selectedNode.value.id]
     nodeIconMap.value = next

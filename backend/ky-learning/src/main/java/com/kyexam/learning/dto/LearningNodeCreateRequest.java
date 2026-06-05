@@ -2,6 +2,7 @@ package com.kyexam.learning.dto;
 
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 public class LearningNodeCreateRequest {
     @NotNull
@@ -10,8 +11,10 @@ public class LearningNodeCreateRequest {
     private Long parentId;
 
     @NotBlank
+    @Size(max = 160)
     private String title;
 
+    @Size(max = 64)
     private String label;
 
     @NotNull

@@ -1,3 +1,5 @@
+SET NAMES utf8mb4;
+
 SET @current_schema = DATABASE();
 
 SET @icon_key_exists = (
@@ -79,6 +81,18 @@ JOIN study_tree t ON t.user_id = n.user_id
 SET n.tree_id = t.id
 WHERE n.tree_id IS NULL;
 
+UPDATE user_syllabus_node n
+JOIN (
+  SELECT user_id, MIN(id) AS tree_id
+  FROM study_tree
+  GROUP BY user_id
+) default_tree ON default_tree.user_id = n.user_id
+LEFT JOIN study_tree current_tree
+  ON current_tree.id = n.tree_id
+  AND current_tree.user_id = n.user_id
+SET n.tree_id = default_tree.tree_id
+WHERE n.tree_id IS NULL OR current_tree.id IS NULL;
+
 CREATE TABLE IF NOT EXISTS learning_node_tag (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
@@ -108,3 +122,36 @@ CREATE TABLE IF NOT EXISTS learning_node_connection (
   CONSTRAINT fk_learning_connection_source FOREIGN KEY (source_node_id) REFERENCES user_syllabus_node(id),
   CONSTRAINT fk_learning_connection_target FOREIGN KEY (target_node_id) REFERENCES user_syllabus_node(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+SET @study_tree_index_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.STATISTICS
+  WHERE TABLE_SCHEMA = @current_schema
+    AND TABLE_NAME = 'user_syllabus_node'
+    AND INDEX_NAME = 'idx_user_study_tree'
+);
+SET @study_tree_index_sql = IF(
+  @study_tree_index_exists = 0,
+  'CREATE INDEX idx_user_study_tree ON user_syllabus_node(user_id, tree_id, parent_id, sort_order)',
+  'SELECT 1'
+);
+PREPARE stmt_study_tree_index FROM @study_tree_index_sql;
+EXECUTE stmt_study_tree_index;
+DEALLOCATE PREPARE stmt_study_tree_index;
+
+SET @tree_fk_exists = (
+  SELECT COUNT(*)
+  FROM information_schema.TABLE_CONSTRAINTS
+  WHERE TABLE_SCHEMA = @current_schema
+    AND TABLE_NAME = 'user_syllabus_node'
+    AND CONSTRAINT_NAME = 'fk_user_tree_study_tree'
+    AND CONSTRAINT_TYPE = 'FOREIGN KEY'
+);
+SET @tree_fk_sql = IF(
+  @tree_fk_exists = 0,
+  'ALTER TABLE user_syllabus_node ADD CONSTRAINT fk_user_tree_study_tree FOREIGN KEY (tree_id) REFERENCES study_tree(id)',
+  'SELECT 1'
+);
+PREPARE stmt_tree_fk FROM @tree_fk_sql;
+EXECUTE stmt_tree_fk;
+DEALLOCATE PREPARE stmt_tree_fk;

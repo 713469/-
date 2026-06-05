@@ -43,6 +43,10 @@ public class StudyTreeService {
                 .orderByAsc(TreeGroup::getId));
     }
 
+    public TreeGroup group(Long id) {
+        return requireOwnedGroup(id, UserContext.current().getId());
+    }
+
     @Transactional
     public TreeGroup createGroup(TreeGroupRequest request) {
         Long userId = UserContext.current().getId();
@@ -74,13 +78,11 @@ public class StudyTreeService {
     public void deleteGroup(Long id) {
         Long userId = UserContext.current().getId();
         TreeGroup group = requireOwnedGroup(id, userId);
-        List<StudyTree> trees = studyTreeMapper.selectList(new LambdaQueryWrapper<StudyTree>()
+        Long treeCount = studyTreeMapper.selectCount(new LambdaQueryWrapper<StudyTree>()
                 .eq(StudyTree::getUserId, userId)
                 .eq(StudyTree::getGroupId, group.getId()));
-        for (StudyTree tree : trees) {
-            tree.setGroupId(null);
-            tree.setUpdatedAt(LocalDateTime.now());
-            studyTreeMapper.updateById(tree);
+        if (treeCount > 0) {
+            throw new BusinessException(400, "该分组下仍有考研树，请先移动或删除这些树后再删除分组");
         }
         treeGroupMapper.deleteById(group.getId());
     }

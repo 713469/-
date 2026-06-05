@@ -30,6 +30,11 @@ public class StudyGroupController {
         return ApiResponse.ok(studyTreeService.groups());
     }
 
+    @GetMapping("/{id}")
+    public ApiResponse<TreeGroup> group(@PathVariable Long id) {
+        return ApiResponse.ok(studyTreeService.group(id));
+    }
+
     @PostMapping
     public ApiResponse<TreeGroup> createGroup(@Validated @RequestBody TreeGroupRequest request) {
         return ApiResponse.ok(studyTreeService.createGroup(request));

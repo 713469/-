@@ -40,32 +40,6 @@ CREATE TABLE IF NOT EXISTS syllabus_node (
   CONSTRAINT fk_syllabus_parent FOREIGN KEY (parent_id) REFERENCES syllabus_node(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
-CREATE TABLE IF NOT EXISTS user_syllabus_node (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  tree_id BIGINT NULL,
-  official_node_id BIGINT NULL,
-  parent_id BIGINT NULL,
-  title VARCHAR(160) NOT NULL,
-  label VARCHAR(64) NOT NULL,
-  icon_key VARCHAR(64) NULL,
-  level_no INT NOT NULL DEFAULT 1,
-  sort_order INT NOT NULL DEFAULT 0,
-  status VARCHAR(32) NOT NULL DEFAULT 'NOT_STARTED',
-  review_count INT NOT NULL DEFAULT 0,
-  plain_understanding TEXT,
-  today_feeling TEXT,
-  custom_node TINYINT(1) NOT NULL DEFAULT 0,
-  weak_score DECIMAL(5,2) NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_user_study_tree(user_id, tree_id, parent_id, sort_order),
-  INDEX idx_user_tree_parent(user_id, parent_id, sort_order),
-  INDEX idx_user_tree_official(user_id, official_node_id),
-  CONSTRAINT fk_user_tree_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_user_tree_parent FOREIGN KEY (parent_id) REFERENCES user_syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
 CREATE TABLE IF NOT EXISTS tree_group (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
@@ -93,6 +67,33 @@ CREATE TABLE IF NOT EXISTS study_tree (
   CONSTRAINT fk_study_tree_group FOREIGN KEY (group_id) REFERENCES tree_group(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+CREATE TABLE IF NOT EXISTS user_syllabus_node (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  tree_id BIGINT NULL,
+  official_node_id BIGINT NULL,
+  parent_id BIGINT NULL,
+  title VARCHAR(160) NOT NULL,
+  label VARCHAR(64) NOT NULL,
+  icon_key VARCHAR(64) NULL,
+  level_no INT NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 0,
+  status VARCHAR(32) NOT NULL DEFAULT 'NOT_STARTED',
+  review_count INT NOT NULL DEFAULT 0,
+  plain_understanding TEXT,
+  today_feeling TEXT,
+  custom_node TINYINT(1) NOT NULL DEFAULT 0,
+  weak_score DECIMAL(5,2) NOT NULL DEFAULT 0,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_user_study_tree(user_id, tree_id, parent_id, sort_order),
+  INDEX idx_user_tree_parent(user_id, parent_id, sort_order),
+  INDEX idx_user_tree_official(user_id, official_node_id),
+  CONSTRAINT fk_user_tree_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
+  CONSTRAINT fk_user_tree_study_tree FOREIGN KEY (tree_id) REFERENCES study_tree(id),
+  CONSTRAINT fk_user_tree_parent FOREIGN KEY (parent_id) REFERENCES user_syllabus_node(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 CREATE TABLE IF NOT EXISTS learning_reflection (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   user_id BIGINT NOT NULL,
@@ -103,6 +104,36 @@ CREATE TABLE IF NOT EXISTS learning_reflection (
   created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   INDEX idx_reflection_user_node(user_id, user_node_id, created_at),
   CONSTRAINT fk_reflection_node FOREIGN KEY (user_node_id) REFERENCES user_syllabus_node(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS learning_node_tag (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  user_node_id BIGINT NOT NULL,
+  name VARCHAR(64) NOT NULL,
+  color VARCHAR(32) NOT NULL DEFAULT '#6bfb9a',
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_learning_node_tag_node(user_id, user_node_id, id),
+  CONSTRAINT fk_learning_tag_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
+  CONSTRAINT fk_learning_tag_node FOREIGN KEY (user_node_id) REFERENCES user_syllabus_node(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+CREATE TABLE IF NOT EXISTS learning_node_connection (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  user_id BIGINT NOT NULL,
+  source_node_id BIGINT NOT NULL,
+  target_node_id BIGINT NOT NULL,
+  relation_type VARCHAR(32) NOT NULL DEFAULT 'RELATED',
+  label VARCHAR(160) NULL,
+  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  UNIQUE KEY uk_learning_node_connection(user_id, source_node_id, target_node_id),
+  INDEX idx_learning_node_connection_source(user_id, source_node_id, id),
+  INDEX idx_learning_node_connection_target(user_id, target_node_id, id),
+  CONSTRAINT fk_learning_connection_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
+  CONSTRAINT fk_learning_connection_source FOREIGN KEY (source_node_id) REFERENCES user_syllabus_node(id),
+  CONSTRAINT fk_learning_connection_target FOREIGN KEY (target_node_id) REFERENCES user_syllabus_node(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS community_post (
@@ -116,15 +147,15 @@ CREATE TABLE IF NOT EXISTS community_post (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 INSERT INTO sys_role(id, code, name, description) VALUES
-  (1, 'SYSTEM_ADMIN', '系统管理员', '维护官方 408 大纲树与系统底层数据'),
+  (1, 'SYSTEM_ADMIN', '系统管理员', '维护官方大纲树与系统底层数据'),
   (2, 'COMMUNITY_ADMIN', '社区管理员', '管理资料库与公共讨论区'),
-  (3, 'USER', '11408 考生', '使用个人学习看板与反思笔记')
+  (3, 'USER', '考研考生', '使用个人学习看板与反思笔记')
 ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
 
 INSERT INTO sys_user(id, username, display_name, password_hash, enabled) VALUES
   (1, 'root', '系统管理员', '{noop}admin123', 1),
   (2, 'community', '社区管理员', '{noop}admin123', 1),
-  (10001, 'candidate', '408 考生', '{noop}user123', 1)
+  (10001, 'candidate', '考研考生', '{noop}user123', 1)
 ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), enabled = VALUES(enabled);
 
 INSERT IGNORE INTO sys_user_role(user_id, role_id) VALUES
@@ -140,7 +171,7 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO study_tree(user_id, group_id, name, description, sort_order)
-SELECT u.id, g.id, '408', '默认考研专业课学习树', 10
+SELECT u.id, g.id, '专业课默认树', '默认考研专业课学习树', 10
 FROM sys_user u
 JOIN tree_group g ON g.user_id = u.id AND g.name = '专业课'
 WHERE NOT EXISTS (
@@ -148,10 +179,10 @@ WHERE NOT EXISTS (
 );
 
 INSERT INTO syllabus_node(id, parent_id, code, title, label, level_no, sort_order, description) VALUES
-  (1, NULL, 'CS', '计算机组成原理', '科目', 1, 10, '11408 四科之一，关注硬件系统与组成结构'),
-  (2, NULL, 'DS', '数据结构', '科目', 1, 20, '11408 四科之一，关注抽象数据类型与算法基础'),
-  (3, NULL, 'OS', '操作系统', '科目', 1, 30, '11408 四科之一，关注进程、内存、文件与 I/O'),
-  (4, NULL, 'CN', '计算机网络', '科目', 1, 40, '11408 四科之一，关注分层协议与网络应用'),
+  (1, NULL, 'CS', '计算机组成原理', '科目', 1, 10, '计算机统考核心科目之一，关注硬件系统与组成结构'),
+  (2, NULL, 'DS', '数据结构', '科目', 1, 20, '计算机统考核心科目之一，关注抽象数据类型与算法基础'),
+  (3, NULL, 'OS', '操作系统', '科目', 1, 30, '计算机统考核心科目之一，关注进程、内存、文件与 I/O'),
+  (4, NULL, 'CN', '计算机网络', '科目', 1, 40, '计算机统考核心科目之一，关注分层协议与网络应用'),
   (10, 3, 'OS-PROCESS', '进程与线程', '章', 2, 10, '进程概念、状态转换、调度与同步互斥'),
   (11, 10, 'OS-PROCESS-SYNC', '同步与互斥', '节', 3, 10, '信号量、管程、经典同步问题'),
   (12, 11, 'OS-PV', 'PV 操作与信号量', '考点', 4, 10, 'P/V 原语、互斥信号量与同步信号量的使用'),

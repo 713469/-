@@ -1,13 +1,16 @@
 package com.kyexam.learning.dto;
 
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.Size;
 
 public class StudyTreeRequest {
     private Long groupId;
 
     @NotBlank
+    @Size(max = 160)
     private String name;
 
+    @Size(max = 1000)
     private String description;
 
     private Integer sortOrder;

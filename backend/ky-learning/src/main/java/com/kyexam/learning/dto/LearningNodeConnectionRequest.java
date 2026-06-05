@@ -1,6 +1,7 @@
 package com.kyexam.learning.dto;
 
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 public class LearningNodeConnectionRequest {
     @NotNull
@@ -9,8 +10,10 @@ public class LearningNodeConnectionRequest {
     @NotNull
     private Long targetNodeId;
 
+    @Size(max = 32)
     private String relationType;
 
+    @Size(max = 160)
     private String label;
 
     public Long getSourceNodeId() {
