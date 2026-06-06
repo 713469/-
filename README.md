@@ -109,16 +109,12 @@ Authorization: Bearer <token>
 
 ## 数据库管理规则
 
-数据库 SQL 分为“首次建库基线”和“增量迁移”两类：
+数据库 SQL 只保留一份初始化文件：
 
-1. `docker/mysql/init`
-   - 只负责全新 MySQL 容器首次初始化，Docker 会按文件名顺序执行。
-   - 当前只保留 `001_schema.sql`，作为基础账号、RBAC、官方大纲、学习树、标签、连接等基础表的建库基线。
-
-2. `backend/ky-admin-app/src/main/resources/db/migration`
-   - 负责已有库的后续结构演进。
-   - 当前 `spring.flyway.enabled=true`，后端启动时会自动执行尚未落库的迁移。
-   - 演示数据和后续结构变更统一走 Flyway，不再继续维护 `runtime-updates.sql`，也不再把增量 SQL 堆到 `docker/mysql/init`。
+- `docker/mysql/init/001_schema.sql`
+  - 只负责全新 MySQL 容器首次初始化。
+  - 包含基础账号、RBAC、官方大纲、考研树、学习节点、标签、连接、反思、社区帖子等开发演示数据。
+  - 后续如果有数据库结构或演示数据变更，直接更新这一份 SQL，并由我同步执行到当前本地 MySQL。
 
 ### 首次建库
 
@@ -130,19 +126,11 @@ docker volume rm ky-examination_ky_exam_mysql_data
 docker compose up -d mysql redis
 ```
 
-初始化 MySQL 后，再启动后端服务触发 Flyway 迁移。迁移完成后，普通考生 `candidate` 名下会得到 `2` 个分组、`7` 棵主要考研树，并包含节点标签、知识连接、学习反思、社区帖子等演示数据。
+初始化完成后，普通考生 `candidate` 名下会得到 `2` 个分组、`7` 棵主要考研树，并包含节点标签、知识连接、学习反思、社区帖子等演示数据。
 
 ### 增量更新
 
-已有 `ky_examination` 库优先通过 Flyway 更新：启动 `ky-admin-app` 后，`backend/ky-admin-app/src/main/resources/db/migration` 下未执行过的 `V*.sql` 会自动落库。
-
-当前迁移文件：
-
-- `V2__learning_tree_extensions.sql`：补齐 `icon_key`、`tree_id`，创建树分组、树实例、节点标签、知识连接，并把旧节点回填到默认 `专业课 / 专业课默认树`。
-- `V3__seed_candidate_demo_data.sql`：补充普通考生多学科演示数据，覆盖数据结构、操作系统、计算机组成原理、计算机网络、高等数学、英语、政治。
-- `V4__learning_crud_constraints.sql`：补齐 CRUD MVP 所需字段、表、索引、外键与老数据兼容回填。
-
-如果不依赖 Flyway，也可以按版本顺序手动执行这些 SQL。执行前请先备份数据库。
+项目不再使用数据库迁移工具。已有 `ky_examination` 库需要更新时，直接执行对应 SQL 到当前 MySQL；执行前建议先备份数据库。
 
 ## 学习树模型与删除策略
 

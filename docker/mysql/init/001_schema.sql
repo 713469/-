@@ -1,204 +1,283 @@
-SET NAMES utf8mb4;
 
-CREATE TABLE IF NOT EXISTS sys_user (
-  id BIGINT PRIMARY KEY,
-  username VARCHAR(64) NOT NULL UNIQUE,
-  display_name VARCHAR(64) NOT NULL,
-  password_hash VARCHAR(255) NOT NULL,
-  enabled TINYINT(1) NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+/*!40101 SET @OLD_CHARACTER_SET_CLIENT=@@CHARACTER_SET_CLIENT */;
+/*!40101 SET @OLD_CHARACTER_SET_RESULTS=@@CHARACTER_SET_RESULTS */;
+/*!40101 SET @OLD_COLLATION_CONNECTION=@@COLLATION_CONNECTION */;
+/*!50503 SET NAMES utf8mb4 */;
+/*!40103 SET @OLD_TIME_ZONE=@@TIME_ZONE */;
+/*!40103 SET TIME_ZONE='+00:00' */;
+/*!40014 SET @OLD_UNIQUE_CHECKS=@@UNIQUE_CHECKS, UNIQUE_CHECKS=0 */;
+/*!40014 SET @OLD_FOREIGN_KEY_CHECKS=@@FOREIGN_KEY_CHECKS, FOREIGN_KEY_CHECKS=0 */;
+/*!40101 SET @OLD_SQL_MODE=@@SQL_MODE, SQL_MODE='NO_AUTO_VALUE_ON_ZERO' */;
+/*!40111 SET @OLD_SQL_NOTES=@@SQL_NOTES, SQL_NOTES=0 */;
+DROP TABLE IF EXISTS `community_post`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `community_post` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `author_id` bigint NOT NULL,
+  `title` varchar(160) NOT NULL,
+  `content` text NOT NULL,
+  `status` varchar(32) NOT NULL DEFAULT 'PUBLISHED',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_post_status_time` (`status`,`created_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=600006 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS sys_role (
-  id BIGINT PRIMARY KEY,
-  code VARCHAR(48) NOT NULL UNIQUE,
-  name VARCHAR(64) NOT NULL,
-  description VARCHAR(255)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `community_post` WRITE;
+/*!40000 ALTER TABLE `community_post` DISABLE KEYS */;
+INSERT INTO `community_post` VALUES (4001,2,'专业课暑期复习建议：先把知识树搭起来','暑期不要急着全面刷题。先用知识树把科目、章节、考点拆开，再把错因和感受挂到叶子节点上，后面复盘会轻松很多。','PUBLISHED','2026-06-01 10:00:00'),(4002,10001,'今天把 PV 操作重新梳理了一遍','之前总觉得 PV 题很玄，今天尝试先画资源和动作，再写信号量变化，感觉终于有点顺了。','PUBLISHED','2026-06-02 22:00:00'),(4003,2,'英语阅读别只盯单词量','很多同学背了很多词还是阅读错误率高，核心问题往往是长难句结构分析和选项干扰识别。建议结合错因归类一起练。','PUBLISHED','2026-06-03 12:30:00'),(4004,10001,'政治时政准备开始做周总结','零散看新闻太容易忘，准备每周输出一页热点总结，按会议、政策、国际事件三类整理。','PUBLISHED','2026-06-05 09:00:00'),(600001,1,'系统管理员说明：演示库已内置多学科知识树','本演示环境包含专业课和公共课两类分组，普通考生账号可直接查看多学科树、节点状态、标签、连接和反思记录。','PUBLISHED','2026-06-01 09:00:00'),(600002,2,'专业课暑期复习建议：先把知识树搭起来','暑期不要急着全面刷题。先用知识树把科目、章节、考点拆开，再把错因和感受挂到叶子节点上，后面复盘会轻松很多。','PUBLISHED','2026-06-01 10:00:00'),(600003,10001,'今天把 PV 操作重新梳理了一遍','之前总觉得 PV 题很玄，今天尝试先画资源和动作，再写信号量变化，感觉终于有点顺了。','PUBLISHED','2026-06-02 22:00:00'),(600004,2,'英语阅读别只盯单词量','很多同学背了很多词还是阅读错误率高，核心问题往往是长难句结构分析和选项干扰识别。建议结合错因归类一起练。','PUBLISHED','2026-06-03 12:30:00'),(600005,10001,'政治时政准备开始做周总结','零散看新闻太容易忘，准备每周输出一页热点总结，按会议、政策、国际事件三类整理。','PUBLISHED','2026-06-05 09:00:00');
+/*!40000 ALTER TABLE `community_post` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `learning_node_connection`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `learning_node_connection` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `source_node_id` bigint NOT NULL,
+  `target_node_id` bigint NOT NULL,
+  `relation_type` varchar(32) NOT NULL DEFAULT 'RELATED',
+  `label` varchar(160) DEFAULT NULL,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_learning_node_connection` (`user_id`,`source_node_id`,`target_node_id`),
+  KEY `idx_learning_node_connection_source` (`user_id`,`source_node_id`,`id`),
+  KEY `idx_learning_node_connection_target` (`user_id`,`target_node_id`,`id`),
+  KEY `fk_learning_connection_source` (`source_node_id`),
+  KEY `fk_learning_connection_target` (`target_node_id`),
+  CONSTRAINT `fk_learning_connection_source` FOREIGN KEY (`source_node_id`) REFERENCES `user_syllabus_node` (`id`),
+  CONSTRAINT `fk_learning_connection_target` FOREIGN KEY (`target_node_id`) REFERENCES `user_syllabus_node` (`id`),
+  CONSTRAINT `fk_learning_connection_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=400017 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS sys_user_role (
-  user_id BIGINT NOT NULL,
-  role_id BIGINT NOT NULL,
-  PRIMARY KEY (user_id, role_id),
-  CONSTRAINT fk_user_role_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_user_role_role FOREIGN KEY (role_id) REFERENCES sys_role(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `learning_node_connection` WRITE;
+/*!40000 ALTER TABLE `learning_node_connection` DISABLE KEYS */;
+INSERT INTO `learning_node_connection` VALUES (2001,10001,13,16,'CAUSES','同步失误常常会进一步引出死锁分析','2026-06-05 17:58:59','2026-06-05 17:58:59'),(2002,10001,12,104,'RELATED','Cache 与局部性原理必须一起理解','2026-06-05 17:58:59','2026-06-05 17:58:59'),(2003,10001,14,105,'RELATED','链表逆置常与栈队列思路对照练习','2026-06-05 17:58:59','2026-06-05 17:58:59'),(2004,10001,15,109,'SUPPORTS','拥塞控制建立在可靠传输机制之上','2026-06-05 17:58:59','2026-06-05 17:58:59'),(2009,10001,406,407,'RELATED','认识论与矛盾分析法经常在同一道题里联动','2026-06-05 17:58:59','2026-06-05 17:58:59'),(2010,10001,410,414,'RELATED','政治理论热点需要时政语料补充','2026-06-05 17:58:59','2026-06-05 17:58:59'),(400001,10001,110002,110003,'PREREQUISITE','链表基础操作是逆置题的前置能力','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400002,10001,110004,110005,'RELATED','循环队列判空判满依赖队列顺序存储理解','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400003,10001,120003,120004,'CAUSES','同步互斥设计不当常会引出死锁分析','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400004,10001,120007,120009,'SUPPORTS','局部性原理解释页面置换策略有效性','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400005,10001,130002,130003,'PREREQUISITE','映射方式判断是平均访问时间计算前提','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400006,10001,130004,130005,'RELATED','虚拟存储地址变换与 TLB 命中率联动','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400007,10001,140002,140003,'SUPPORTS','拥塞控制建立在 TCP 可靠传输机制之上','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400008,10001,140007,140008,'PREREQUISITE','子网划分是 CIDR 与路由聚合的基础','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400009,10001,210003,210005,'PREREQUISITE','极限是导数定义和应用题的前置基础','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400010,10001,210007,210008,'PREREQUISITE','先稳住一元积分，再过渡到二重积分','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400011,10001,220004,220005,'SUPPORTS','熟词僻义必须回到真题语境里巩固','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400012,10001,220007,220015,'SUPPORTS','长难句拆分直接支撑翻译断句','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400013,10001,220009,220010,'RELATED','主旨态度题错因常来自干扰项识别不足','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400014,10001,230002,230003,'RELATED','认识论专题常落到实践标准表述','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400015,10001,230004,230005,'RELATED','矛盾分析法需要用两点论和重点论组织答案','2026-06-06 00:54:15','2026-06-06 00:54:15'),(400016,10001,230011,230014,'RELATED','政治理论专题需要时政语料补充','2026-06-06 00:54:15','2026-06-06 00:54:15');
+/*!40000 ALTER TABLE `learning_node_connection` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `learning_node_tag`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `learning_node_tag` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `user_node_id` bigint NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `color` varchar(32) NOT NULL DEFAULT '#6bfb9a',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_learning_node_tag_node` (`user_id`,`user_node_id`,`id`),
+  KEY `fk_learning_tag_node` (`user_node_id`),
+  CONSTRAINT `fk_learning_tag_node` FOREIGN KEY (`user_node_id`) REFERENCES `user_syllabus_node` (`id`),
+  CONSTRAINT `fk_learning_tag_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=300019 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS syllabus_node (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  parent_id BIGINT NULL,
-  code VARCHAR(96) NOT NULL UNIQUE,
-  title VARCHAR(160) NOT NULL,
-  label VARCHAR(64) NOT NULL,
-  level_no INT NOT NULL DEFAULT 1,
-  sort_order INT NOT NULL DEFAULT 0,
-  description VARCHAR(1000),
-  enabled TINYINT(1) NOT NULL DEFAULT 1,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_syllabus_parent_sort(parent_id, sort_order),
-  CONSTRAINT fk_syllabus_parent FOREIGN KEY (parent_id) REFERENCES syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `learning_node_tag` WRITE;
+/*!40000 ALTER TABLE `learning_node_tag` DISABLE KEYS */;
+INSERT INTO `learning_node_tag` VALUES (1001,10001,13,'高频易错','#ef4444','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1002,10001,13,'二刷重点','#f97316','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1004,10001,12,'公式必背','#6366f1','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1005,10001,14,'手写一遍','#10b981','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1006,10001,15,'真题高频','#f43f5e','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1014,10001,406,'大题储备','#f97316','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1015,10001,407,'方法论','#84cc16','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1016,10001,414,'时政热点','#dc2626','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1017,10001,415,'关键词摘录','#0891b2','2026-06-05 17:58:59','2026-06-05 17:58:59'),(1018,10001,104,'知识串联','#22c55e','2026-06-05 17:58:59','2026-06-05 17:58:59'),(300001,10001,110003,'手写一遍','#10b981','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300002,10001,110012,'稳定性判断','#f97316','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300003,10001,120003,'高频易错','#ef4444','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300004,10001,120004,'概念混淆','#fb7185','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300005,10001,130002,'公式必背','#6366f1','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300006,10001,130005,'计算题','#06b6d4','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300007,10001,140003,'真题高频','#f43f5e','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300008,10001,140008,'地址规划','#0891b2','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300009,10001,210003,'计算易丢分','#f59e0b','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300010,10001,210005,'综合题核心','#8b5cf6','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300011,10001,220004,'熟词僻义','#e11d48','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300012,10001,220007,'长难句','#0ea5e9','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300013,10001,220011,'作文素材','#14b8a6','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300014,10001,230003,'大题储备','#f97316','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300015,10001,230005,'方法论','#84cc16','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300016,10001,230014,'时政热点','#dc2626','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300017,10001,230015,'关键词摘录','#0891b2','2026-06-06 00:54:15','2026-06-06 00:54:15'),(300018,10001,120009,'知识串联','#22c55e','2026-06-06 00:54:15','2026-06-06 00:54:15');
+/*!40000 ALTER TABLE `learning_node_tag` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `learning_reflection`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `learning_reflection` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `user_node_id` bigint NOT NULL,
+  `content_type` varchar(32) NOT NULL,
+  `content` text NOT NULL,
+  `agent_answer` text,
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_reflection_user_node` (`user_id`,`user_node_id`,`created_at`),
+  KEY `fk_reflection_node` (`user_node_id`),
+  CONSTRAINT `fk_reflection_node` FOREIGN KEY (`user_node_id`) REFERENCES `user_syllabus_node` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=500011 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS tree_group (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  name VARCHAR(120) NOT NULL,
-  description VARCHAR(1000),
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_tree_group_user_sort(user_id, sort_order, id),
-  CONSTRAINT fk_tree_group_user FOREIGN KEY (user_id) REFERENCES sys_user(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `learning_reflection` WRITE;
+/*!40000 ALTER TABLE `learning_reflection` DISABLE KEYS */;
+INSERT INTO `learning_reflection` VALUES (3001,10001,13,'FEELING','今天做 PV 题还是会把同步和互斥混到一起，尤其是多缓冲区模型。','先把题目中的资源、动作、约束三列出来，再决定哪个信号量负责互斥、哪个负责同步。不要急着直接写 P 和 V。','2026-06-01 21:30:00'),(3002,10001,16,'UNDERSTANDING','死锁四个必要条件已经能背出来，但题目一绕就不会判断是哪种处理策略。','做题时先判断它是在问预防、避免、检测还是解除，再去看资源分配图或安全序列，不要一开始就被术语带跑。','2026-06-02 09:10:00'),(3003,10001,12,'PLAN','这周要把 Cache 映射题每天刷五道，重点练组相联。','建议把每道题统一成“块号拆分、组号定位、替换判断”三步模板，几天后速度会明显上来。','2026-06-02 22:05:00'),(3009,10001,406,'FEELING','马原大题写出来总像口语，感觉不够像答案。','先背住每个专题的三四个标准句型，比如“实践是认识的来源和发展的动力”，再往里填你自己的理解。','2026-06-05 07:30:00'),(3010,10001,414,'PLAN','本周把科技创新和宏观经济热点整理成两张 A4。','很好，这样后续做选择题和大题时都能快速调用材料。建议每个热点都保留“关键词、背景、可能考法”三栏。','2026-06-05 08:10:00'),(3011,10001,102,'FEELING','目前只是看过概念，还没形成题感。',NULL,'2026-06-06 00:10:58'),(3012,10001,102,'FEELING','目前只是看过概念，还没形成题感。',NULL,'2026-06-06 00:11:02'),(500001,10001,120003,'FEELING','今天做 PV 题还是会把同步和互斥混到一起，尤其是多缓冲区模型。','先把题目中的资源、动作、约束三列出来，再决定哪个信号量负责互斥、哪个负责同步。不要急着直接写 P 和 V。','2026-06-01 21:30:00'),(500002,10001,120004,'UNDERSTANDING','死锁四个必要条件已经能背出来，但题目一绕就不会判断是哪种处理策略。','做题时先判断它是在问预防、避免、检测还是解除，再去看资源分配图或安全序列，不要一开始就被术语带跑。','2026-06-02 09:10:00'),(500003,10001,130002,'PLAN','这周要把 Cache 映射题每天刷五道，重点练组相联。','建议把每道题统一成“块号拆分、组号定位、替换判断”三步模板，几天后速度会明显上来。','2026-06-02 22:05:00'),(500004,10001,210003,'ERROR_BOOK','含参极限时漏掉了参数取值范围，结果分类讨论不完整。','以后先写出参数可能改变函数符号或定义域的位置，宁可慢十秒，也别直接代公式。','2026-06-03 15:20:00'),(500005,10001,210005,'FEELING','导数应用综合题一长就会慌，不知道先证明还是先讨论单调性。','先把目标拆开。若结论涉及最值或不等式，通常先求导找单调区间，再回到原结论组织证明。','2026-06-03 22:40:00'),(500006,10001,220007,'FEELING','阅读里的长难句总觉得每个词都认识，但整句意思抓不住。','从主干开始切，不要试图一口吞下整句。先找谓语，再找主语、宾语，最后再把修饰部分一层层挂回去。','2026-06-04 08:00:00'),(500007,10001,220011,'PLAN','准备每周自己写一篇大作文，把素材句固定下来。','可以先建立三套稳定骨架：现象类、品质类、选择类。先求结构稳，再逐步增加个性表达。','2026-06-04 20:10:00'),(500008,10001,220010,'UNDERSTANDING','最近发现阅读错误很多不是单词不认识，而是自己脑补了作者态度。','这是很关键的发现。后续每次复盘都标出“证据句”，把判断建立在文本上，能明显减少主观带偏。','2026-06-04 21:50:00'),(500009,10001,230003,'FEELING','马原大题写出来总像口语，感觉不够像答案。','先背住每个专题的三四个标准句型，比如“实践是认识的来源和发展的动力”，再往里填你自己的理解。','2026-06-05 07:30:00'),(500010,10001,230014,'PLAN','本周把科技创新和宏观经济热点整理成两张 A4。','很好，这样后续做选择题和大题时都能快速调用材料。建议每个热点都保留“关键词、背景、可能考法”三栏。','2026-06-05 08:10:00');
+/*!40000 ALTER TABLE `learning_reflection` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `study_tree`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `study_tree` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `group_id` bigint DEFAULT NULL,
+  `name` varchar(160) NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_study_tree_user_sort` (`user_id`,`sort_order`,`id`),
+  KEY `idx_study_tree_group` (`group_id`,`sort_order`,`id`),
+  CONSTRAINT `fk_study_tree_group` FOREIGN KEY (`group_id`) REFERENCES `tree_group` (`id`),
+  CONSTRAINT `fk_study_tree_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=12 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS study_tree (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  group_id BIGINT NULL,
-  name VARCHAR(160) NOT NULL,
-  description VARCHAR(1000),
-  sort_order INT NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_study_tree_user_sort(user_id, sort_order, id),
-  INDEX idx_study_tree_group(group_id, sort_order, id),
-  CONSTRAINT fk_study_tree_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_study_tree_group FOREIGN KEY (group_id) REFERENCES tree_group(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `study_tree` WRITE;
+/*!40000 ALTER TABLE `study_tree` DISABLE KEYS */;
+INSERT INTO `study_tree` VALUES (1,10001,1,'数据结构','线性结构、树图结构与算法题复盘',10,'2026-06-05 17:15:51','2026-06-06 00:54:15'),(2,2,2,'专业课默认树','默认考研专业课学习树',10,'2026-06-05 17:15:51','2026-06-06 01:18:23'),(3,1,3,'专业课默认树','默认考研专业课学习树',10,'2026-06-05 17:15:51','2026-06-06 01:18:23'),(6,10001,4,'政治','政治理论框架、时政热点与背诵节奏',30,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(7,10001,1,'操作系统','进程、内存、文件与 I/O 的状态推演',20,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(8,10001,1,'计算机组成原理','存储、指令、CPU 与整机结构计算题',30,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(9,10001,1,'计算机网络','分层协议、传输控制与地址规划',40,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(10,10001,4,'高等数学','极限、导数、积分、线代与概率的公共课树',10,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(11,10001,4,'英语','词汇、阅读、翻译、写作联动复盘',20,'2026-06-06 00:54:15','2026-06-06 00:54:15');
+/*!40000 ALTER TABLE `study_tree` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `syllabus_node`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `syllabus_node` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `parent_id` bigint DEFAULT NULL,
+  `code` varchar(96) NOT NULL,
+  `title` varchar(160) NOT NULL,
+  `label` varchar(64) NOT NULL,
+  `level_no` int NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `description` varchar(1000) DEFAULT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`),
+  KEY `idx_syllabus_parent_sort` (`parent_id`,`sort_order`),
+  CONSTRAINT `fk_syllabus_parent` FOREIGN KEY (`parent_id`) REFERENCES `syllabus_node` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=44 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS user_syllabus_node (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  tree_id BIGINT NULL,
-  official_node_id BIGINT NULL,
-  parent_id BIGINT NULL,
-  title VARCHAR(160) NOT NULL,
-  label VARCHAR(64) NOT NULL,
-  icon_key VARCHAR(64) NULL,
-  level_no INT NOT NULL DEFAULT 1,
-  sort_order INT NOT NULL DEFAULT 0,
-  status VARCHAR(32) NOT NULL DEFAULT 'NOT_STARTED',
-  review_count INT NOT NULL DEFAULT 0,
-  plain_understanding TEXT,
-  today_feeling TEXT,
-  custom_node TINYINT(1) NOT NULL DEFAULT 0,
-  weak_score DECIMAL(5,2) NOT NULL DEFAULT 0,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_user_study_tree(user_id, tree_id, parent_id, sort_order),
-  INDEX idx_user_tree_parent(user_id, parent_id, sort_order),
-  INDEX idx_user_tree_official(user_id, official_node_id),
-  CONSTRAINT fk_user_tree_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_user_tree_study_tree FOREIGN KEY (tree_id) REFERENCES study_tree(id),
-  CONSTRAINT fk_user_tree_parent FOREIGN KEY (parent_id) REFERENCES user_syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `syllabus_node` WRITE;
+/*!40000 ALTER TABLE `syllabus_node` DISABLE KEYS */;
+INSERT INTO `syllabus_node` VALUES (1,NULL,'CS','计算机组成原理','科目',1,10,'计算机统考核心科目之一，关注硬件系统与组成结构',1,'2026-06-05 13:59:58','2026-06-06 09:42:35'),(2,NULL,'DS','数据结构','科目',1,20,'计算机统考核心科目之一，关注抽象数据类型与算法基础',1,'2026-06-05 13:59:58','2026-06-06 09:42:35'),(3,NULL,'OS','操作系统','科目',1,30,'计算机统考核心科目之一，关注进程、内存、文件与 I/O',1,'2026-06-05 13:59:58','2026-06-06 09:42:35'),(4,NULL,'CN','计算机网络','科目',1,40,'计算机统考核心科目之一，关注分层协议与网络应用',1,'2026-06-05 13:59:58','2026-06-06 09:42:35'),(10,3,'OS-PROCESS','进程与线程','章',2,10,'进程概念、状态转换、调度与同步互斥',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(11,10,'OS-PROCESS-SYNC','同步与互斥','节',3,10,'信号量、管程、经典同步问题',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(12,11,'OS-PV','PV 操作与信号量','考点',4,10,'P/V 原语、互斥信号量与同步信号量的使用',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(13,11,'OS-DEADLOCK','死锁','考点',4,20,'死锁条件、预防、避免、检测与解除',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(20,2,'DS-LINEAR','线性表','章',2,10,'顺序表、链表及相关操作',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(21,20,'DS-LIST','链表','节',3,10,'单链表、双链表、循环链表',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(22,21,'DS-LIST-REVERSE','链表逆置','考点',4,10,'头插法、递归、指针调整边界',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(23,20,'DS-STACK-QUEUE','栈与队列','节',3,20,'顺序栈、链栈、循环队列与应用',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(24,2,'DS-GRAPH','图与遍历','章',2,20,'图的存储表示、遍历与最短路径',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(25,24,'DS-GRAPH-TRAVERSE','DFS 与 BFS','节',3,10,'深度优先、广度优先与应用场景',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(26,25,'DS-GRAPH-TOPO','拓扑排序与关键路径','考点',4,10,'有向无环图中的排序与工程调度',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(30,4,'CN-TRANSPORT','传输层','章',2,10,'TCP/UDP、可靠传输、拥塞控制',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(31,30,'CN-TCP','TCP 协议','节',3,10,'连接管理、可靠传输、流量控制',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(32,31,'CN-TCP-CONGESTION','TCP 拥塞控制','考点',4,10,'慢开始、拥塞避免、快重传与快恢复',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(33,31,'CN-HANDSHAKE','三次握手与四次挥手','考点',4,20,'连接建立与连接释放的细节',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(34,4,'CN-NETWORK','网络层','章',2,20,'IP、路由、分片与地址规划',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(40,1,'CS-MEMORY','存储系统','章',2,10,'层次化存储、Cache、虚拟存储器',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(41,40,'CS-CACHE','Cache','节',3,10,'映射方式、替换策略、命中率计算',1,'2026-06-05 13:59:58','2026-06-05 13:59:58'),(42,40,'CS-VM','虚拟存储器','节',3,20,'页式管理、地址变换与局部性原理',1,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(43,42,'CS-TLB','TLB 与快表','考点',4,10,'快表命中、地址变换与访问开销分析',1,'2026-06-05 17:58:59','2026-06-05 17:58:59');
+/*!40000 ALTER TABLE `syllabus_node` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `sys_role`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_role` (
+  `id` bigint NOT NULL,
+  `code` varchar(48) NOT NULL,
+  `name` varchar(64) NOT NULL,
+  `description` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `code` (`code`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS learning_reflection (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  user_node_id BIGINT NOT NULL,
-  content_type VARCHAR(32) NOT NULL,
-  content TEXT NOT NULL,
-  agent_answer TEXT,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_reflection_user_node(user_id, user_node_id, created_at),
-  CONSTRAINT fk_reflection_node FOREIGN KEY (user_node_id) REFERENCES user_syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `sys_role` WRITE;
+/*!40000 ALTER TABLE `sys_role` DISABLE KEYS */;
+INSERT INTO `sys_role` VALUES (1,'SYSTEM_ADMIN','系统管理员','维护官方大纲树与系统底层数据'),(2,'COMMUNITY_ADMIN','社区管理员','管理资料库与公共讨论区'),(3,'USER','考研考生','使用个人学习看板与反思笔记');
+/*!40000 ALTER TABLE `sys_role` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `sys_user`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_user` (
+  `id` bigint NOT NULL,
+  `username` varchar(64) NOT NULL,
+  `display_name` varchar(64) NOT NULL,
+  `password_hash` varchar(255) NOT NULL,
+  `enabled` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `username` (`username`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS learning_node_tag (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  user_node_id BIGINT NOT NULL,
-  name VARCHAR(64) NOT NULL,
-  color VARCHAR(32) NOT NULL DEFAULT '#6bfb9a',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_learning_node_tag_node(user_id, user_node_id, id),
-  CONSTRAINT fk_learning_tag_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_learning_tag_node FOREIGN KEY (user_node_id) REFERENCES user_syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `sys_user` WRITE;
+/*!40000 ALTER TABLE `sys_user` DISABLE KEYS */;
+INSERT INTO `sys_user` VALUES (1,'root','系统管理员','{noop}admin123',1,'2026-06-05 13:59:58'),(2,'community','社区管理员','{noop}admin123',1,'2026-06-05 13:59:58'),(10001,'candidate','考研考生','{noop}user123',1,'2026-06-05 13:59:58');
+/*!40000 ALTER TABLE `sys_user` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `sys_user_role`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `sys_user_role` (
+  `user_id` bigint NOT NULL,
+  `role_id` bigint NOT NULL,
+  PRIMARY KEY (`user_id`,`role_id`),
+  KEY `fk_user_role_role` (`role_id`),
+  CONSTRAINT `fk_user_role_role` FOREIGN KEY (`role_id`) REFERENCES `sys_role` (`id`),
+  CONSTRAINT `fk_user_role_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS learning_node_connection (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  user_id BIGINT NOT NULL,
-  source_node_id BIGINT NOT NULL,
-  target_node_id BIGINT NOT NULL,
-  relation_type VARCHAR(32) NOT NULL DEFAULT 'RELATED',
-  label VARCHAR(160) NULL,
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  UNIQUE KEY uk_learning_node_connection(user_id, source_node_id, target_node_id),
-  INDEX idx_learning_node_connection_source(user_id, source_node_id, id),
-  INDEX idx_learning_node_connection_target(user_id, target_node_id, id),
-  CONSTRAINT fk_learning_connection_user FOREIGN KEY (user_id) REFERENCES sys_user(id),
-  CONSTRAINT fk_learning_connection_source FOREIGN KEY (source_node_id) REFERENCES user_syllabus_node(id),
-  CONSTRAINT fk_learning_connection_target FOREIGN KEY (target_node_id) REFERENCES user_syllabus_node(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `sys_user_role` WRITE;
+/*!40000 ALTER TABLE `sys_user_role` DISABLE KEYS */;
+INSERT INTO `sys_user_role` VALUES (1,1),(2,2),(10001,3);
+/*!40000 ALTER TABLE `sys_user_role` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `tree_group`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `tree_group` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `name` varchar(120) NOT NULL,
+  `description` varchar(1000) DEFAULT NULL,
+  `sort_order` int NOT NULL DEFAULT '0',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_tree_group_user_sort` (`user_id`,`sort_order`,`id`),
+  CONSTRAINT `fk_tree_group_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-CREATE TABLE IF NOT EXISTS community_post (
-  id BIGINT PRIMARY KEY AUTO_INCREMENT,
-  author_id BIGINT NOT NULL,
-  title VARCHAR(160) NOT NULL,
-  content TEXT NOT NULL,
-  status VARCHAR(32) NOT NULL DEFAULT 'PUBLISHED',
-  created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  INDEX idx_post_status_time(status, created_at)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+LOCK TABLES `tree_group` WRITE;
+/*!40000 ALTER TABLE `tree_group` DISABLE KEYS */;
+INSERT INTO `tree_group` VALUES (1,10001,'专业课','计算机专业课与自定义专业课知识树',10,'2026-06-05 17:15:51','2026-06-06 01:18:23'),(2,2,'专业课','考研专业课知识树分组',10,'2026-06-05 17:15:51','2026-06-05 17:15:51'),(3,1,'专业课','考研专业课知识树分组',10,'2026-06-05 17:15:51','2026-06-05 17:15:51'),(4,10001,'公共课','数学、英语、政治等公共课知识树',20,'2026-06-05 17:17:07','2026-06-05 17:58:59');
+/*!40000 ALTER TABLE `tree_group` ENABLE KEYS */;
+UNLOCK TABLES;
+DROP TABLE IF EXISTS `user_syllabus_node`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `user_syllabus_node` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `user_id` bigint NOT NULL,
+  `tree_id` bigint DEFAULT NULL,
+  `official_node_id` bigint DEFAULT NULL,
+  `parent_id` bigint DEFAULT NULL,
+  `title` varchar(160) NOT NULL,
+  `label` varchar(64) NOT NULL,
+  `icon_key` varchar(64) DEFAULT NULL,
+  `level_no` int NOT NULL DEFAULT '1',
+  `sort_order` int NOT NULL DEFAULT '0',
+  `status` varchar(32) NOT NULL DEFAULT 'NOT_STARTED',
+  `review_count` int NOT NULL DEFAULT '0',
+  `plain_understanding` text,
+  `today_feeling` text,
+  `custom_node` tinyint(1) NOT NULL DEFAULT '0',
+  `weak_score` decimal(5,2) NOT NULL DEFAULT '0.00',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_tree_parent` (`user_id`,`parent_id`,`sort_order`),
+  KEY `idx_user_tree_official` (`user_id`,`official_node_id`),
+  KEY `fk_user_tree_parent` (`parent_id`),
+  CONSTRAINT `fk_user_tree_parent` FOREIGN KEY (`parent_id`) REFERENCES `user_syllabus_node` (`id`),
+  CONSTRAINT `fk_user_tree_user` FOREIGN KEY (`user_id`) REFERENCES `sys_user` (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=230016 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 
-INSERT INTO sys_role(id, code, name, description) VALUES
-  (1, 'SYSTEM_ADMIN', '系统管理员', '维护官方大纲树与系统底层数据'),
-  (2, 'COMMUNITY_ADMIN', '社区管理员', '管理资料库与公共讨论区'),
-  (3, 'USER', '考研考生', '使用个人学习看板与反思笔记')
-ON DUPLICATE KEY UPDATE name = VALUES(name), description = VALUES(description);
+LOCK TABLES `user_syllabus_node` WRITE;
+/*!40000 ALTER TABLE `user_syllabus_node` DISABLE KEYS */;
+INSERT INTO `user_syllabus_node` VALUES (1,10001,1,1,NULL,'计算机组成原理','科目','cpu',1,10,'IN_PROGRESS',4,'先抓住层次化存储、指令执行流程和总线交互，再去啃细碎计算题。','今天刷题时 Cache 命中率题还行，但地址映射一换条件就容易算乱。',0,32.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(2,10001,1,2,NULL,'数据结构','科目','database',1,20,'IN_PROGRESS',5,'数据结构最怕只背模板，真正拿分还是靠把结构特性和题型对应起来。','链表题做得顺，图论部分还没有形成稳定手感。',0,28.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(3,10001,1,3,NULL,'操作系统','科目','terminal',1,30,'IN_PROGRESS',6,'操作系统核心是把抽象概念变成状态变化和资源竞争过程来看。','PV 题仍然会卡住，尤其是多信号量同时变化的时候。',0,41.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(4,10001,1,4,NULL,'计算机网络','科目','network',1,40,'IN_PROGRESS',4,'网络题的主线是分层职责，抓住每层解决什么问题就不容易串。','TCP 细节比 UDP 更熟，但网络层还需要连到画图题一起练。',0,26.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(5,10001,1,10,3,'进程与线程','章','workflow',2,10,'IN_PROGRESS',5,'进程像资源分配单位，线程像执行单位，后面的同步调度都围着这层展开。','调度算法一做就想混淆周转时间和响应时间。',0,44.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(6,10001,1,20,2,'线性表','章','layers',2,20,'MASTERED',7,'线性表是很多题型的出发点，顺序与链式两种存储的差别必须条件反射。','顺序表和链表优缺点已经比较稳，接下来主要补边界条件。',0,15.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(7,10001,1,30,4,'传输层','章','cable',2,10,'IN_PROGRESS',4,'传输层重在可靠传输机制和流量拥塞控制的因果链。','一旦题目把滑动窗口和拥塞窗口放一起，我就会犹豫先看哪个。',0,33.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(8,10001,1,40,1,'存储系统','章','memory',2,10,'IN_PROGRESS',4,'存储系统一定要按层次看速度、容量与成本的交换关系。','Cache 和虚拟存储串起来之后清晰多了，但细节计算还没完全稳。',0,36.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(9,10001,1,11,5,'同步与互斥','节','shield',3,10,'IN_PROGRESS',6,'同步是为了顺序约束，互斥是为了保护临界资源，这两个目标必须分开看。','写 PV 题时最怕遗漏一个 V 操作，结果整个流程都错。',0,63.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(10,10001,1,21,6,'链表','节','branch',3,10,'MASTERED',8,'链表题只要画清指针变化顺序，很多题其实就是局部重连。','基础操作很稳，但涉及哨兵结点时偶尔会忘记判空。',0,18.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(11,10001,1,31,7,'TCP 协议','节','network',3,10,'IN_PROGRESS',5,'TCP 是把不可靠网络包装成可靠字节流服务的整套机制。','窗口、确认、重传一起出现时，需要再多做流程推演题。',0,38.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(12,10001,1,41,8,'Cache 映射与替换策略','节','circuit',3,10,'IN_PROGRESS',5,'Cache 题先识别映射方式，再判断替换策略和命中情况。','组相联映射的块号拆分还不是特别自然。',0,52.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(13,10001,1,12,9,'PV 操作与信号量','考点','binary',4,10,'IN_PROGRESS',7,'信号量本质是用整数和原语去约束并发执行次序。','今天又卡在生产者消费者的变体题上，能看懂题意但列不稳 P 和 V。',0,78.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(14,10001,1,22,10,'链表逆置','考点','route',4,10,'MASTERED',9,'逆置核心是保存后继、翻转指向、整体推进三步循环。','手写已经很顺，现在主要提醒自己检查空链表和单结点。',0,12.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(15,10001,1,32,11,'TCP 拥塞控制','考点','workflow',4,10,'IN_PROGRESS',6,'拥塞控制要连着慢开始、拥塞避免、快重传、快恢复一起理解。','ssthresh 更新规则还是会混，得再整理成一张流程表。',0,58.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(16,10001,1,13,9,'死锁','考点','atom',4,20,'IN_PROGRESS',5,'死锁就是资源分配进入循环等待，要会从条件和处理策略两边分析。','预防、避免、检测三个思路背得出，但一到题里就容易张冠李戴。',0,61.00,'2026-06-05 14:02:11','2026-06-05 17:58:59'),(101,10001,1,NULL,1,'指令系统','章','code',2,20,'NOT_STARTED',1,'这一章要先把寻址方式和指令格式理顺，再碰机器数计算。','刚开了个头，先建立总表，后面再专项刷选择题。',1,22.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(102,10001,1,NULL,1,'总线与 I/O','章','cable',2,30,'NOT_STARTED',1,'总线和 I/O 更像补全整机视角，需要和中断、DMA 联动理解。','目前只是看过概念，还没形成题感。',1,20.00,'2026-06-05 17:58:59','2026-06-06 00:11:02'),(103,10001,1,NULL,8,'页面置换算法','节','workflow',3,20,'IN_PROGRESS',3,'FIFO、LRU、OPT 的差异要落到访问串上去比较。','Belady 异常已经理解，但自己算 LRU 还是容易漏最近访问次序。',1,57.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(104,10001,1,NULL,8,'局部性原理','节','brain',3,30,'MASTERED',4,'时间局部性和空间局部性解释了为什么 Cache 与页式存储都有效。','这个点已经比较通顺，适合拿来串联多个章节。',1,16.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(105,10001,1,NULL,2,'栈与队列','章','boxes',2,30,'IN_PROGRESS',4,'栈和队列往往考基本操作与典型应用场景，比如括号匹配和层次遍历。','循环队列判满判空的条件仍要刻意复述。',1,31.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(106,10001,1,NULL,2,'图与遍历','章','branch',2,40,'NOT_STARTED',1,'图论部分容易一下子变杂，必须先稳住存储结构和遍历框架。','还没真正开始做图题，先把邻接矩阵和邻接表复盘一下。',1,24.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(107,10001,1,NULL,9,'临界资源经典问题','考点','shield',4,30,'IN_PROGRESS',5,'生产者消费者、读者写者、哲学家进餐其实是在练约束条件的表达。','一遇到公平性要求，我就会多加或少加一个信号量。',1,73.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(108,10001,1,NULL,5,'调度算法比较','节','route',3,20,'IN_PROGRESS',4,'先分清抢占和非抢占，再比较等待时间、响应时间和吞吐量。','短作业优先和时间片轮转的题算起来还不够快。',1,46.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(109,10001,1,NULL,11,'流量控制与可靠传输','考点','network',4,20,'IN_PROGRESS',5,'可靠传输靠确认、重传、编号，流量控制靠接收方窗口调节。','累计确认和超时重传放在一个题里时，我会把事件顺序搞混。',1,49.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(110,10001,1,NULL,11,'三次握手与四次挥手','考点','workflow',4,30,'MASTERED',6,'背步骤不够，要知道为什么需要 SYN、ACK、TIME_WAIT 这些状态。','这块已经挺稳，偶尔只会忘记 TIME_WAIT 的作用。',1,19.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(111,10001,1,NULL,4,'网络层','章','route',2,20,'NOT_STARTED',1,'网络层主要看 IP 地址、路由选择、分片重组和子网划分。','打算放到下周集中开一个专题，把常见计算题一起做。',1,27.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(112,10001,1,NULL,111,'子网划分与 CIDR','节','sigma',3,10,'NOT_STARTED',0,'CIDR 题关键是掩码与地址块的换算，做多了会越来越像固定模板。','还没有真正刷题，先留个坑位。',1,29.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(113,10001,1,NULL,102,'中断系统与 DMA','节','circuit',3,10,'NOT_STARTED',0,'这部分要从 CPU 与外设协同的视角来记，不然很容易碎。','概念了解了一遍，细节等后面再补。',1,21.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(401,10001,6,NULL,NULL,'马原','模块','brain',1,10,'IN_PROGRESS',6,'马原不是靠硬背孤立句子，而是搭建世界观、方法论和认识论框架。','选择题能跟住，大题还不能自然展开。',1,37.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(402,10001,6,NULL,NULL,'史纲','模块','book',1,20,'IN_PROGRESS',4,'史纲要抓阶段线索和事件意义，避免只剩年份记忆。','重大转折点能记住，但横向比较还比较弱。',1,32.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(403,10001,6,NULL,NULL,'毛中特','模块','shield',1,30,'NOT_STARTED',2,'毛中特后期投入更划算，重点是概念体系和政策表达。','目前只在听导学课。',1,22.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(404,10001,6,NULL,NULL,'思修法基','模块','shield',1,40,'NOT_STARTED',1,'这块概念直白，但需要注意条文表述和案例落点。','先记了章节框架，题目还没铺开。',1,18.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(405,10001,6,NULL,NULL,'时政','模块','network',1,50,'IN_PROGRESS',3,'时政更适合作为持续积累模块，不要等到最后一周突击。','每天看一点，先把高频会议和主题整理成卡片。',1,35.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(406,10001,6,NULL,401,'实践与认识','专题','workflow',2,10,'IN_PROGRESS',5,'认识来源于实践、又反作用于实践，这条链要能自己说顺。','大题表述还是偏口语，需要更像标准答案。',1,43.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(407,10001,6,NULL,401,'矛盾分析法','专题','branch',2,20,'IN_PROGRESS',4,'主要矛盾和矛盾主要方面很容易混，必须通过例子去压实。','选项里一换语序就容易被带走。',1,47.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(408,10001,6,NULL,402,'近现代历史主线','专题','route',2,10,'MASTERED',5,'史纲复习的关键是主线清楚，再去挂载人物事件和意义。','这一块框架感不错，后续主要补细节。',1,20.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(409,10001,6,NULL,402,'新民主主义革命','专题','shield',2,20,'IN_PROGRESS',4,'革命道路、统一战线和党的建设是高频组合考点。','一做多选题就怕漏项，需要再细抠教材表述。',1,39.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(410,10001,6,NULL,403,'中国式现代化','专题','network',2,10,'NOT_STARTED',1,'这部分要结合最新表述和核心特征来背。','计划放到暑期后半段系统收。',1,24.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(411,10001,6,NULL,403,'党的建设','专题','shield',2,20,'NOT_STARTED',1,'党的建设通常和政治表述联系紧，需要原句记忆。','先占位，等课程推进。',1,19.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(412,10001,6,NULL,404,'法律基础','专题','book',2,10,'NOT_STARTED',1,'法基题常见到案例表达，所以不能只背定义。','还没正式开始。',1,17.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(413,10001,6,NULL,404,'道德与理想信念','专题','circle',2,20,'NOT_STARTED',1,'这部分更适合用关键词去串，不需要把每句都背死。','先过了一遍目录。',1,16.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(414,10001,6,NULL,405,'当月热点专题','专题','network',2,10,'IN_PROGRESS',3,'时政热点要按会议、政策、国际事件分桶整理。','这周准备把经济和科技类热点做成一页总结。',1,42.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(415,10001,6,NULL,405,'会议与文件关键词','专题','book',2,20,'IN_PROGRESS',3,'同一主题在不同文件里的提法很像，适合做对照表。','最近开始做关键词摘录，感觉终于没那么散了。',1,31.00,'2026-06-05 17:58:59','2026-06-05 17:58:59'),(110001,10001,1,20,NULL,'线性表','章','layers',1,10,'MASTERED',7,'线性表是很多结构题的入口，顺序存储和链式存储的差异必须条件反射。','顺序表和链表优缺点已经比较稳，接下来主要补边界条件。',0,15.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110002,10001,1,21,110001,'链表','节','branch',2,10,'MASTERED',8,'链表题只要画清指针变化顺序，很多题其实就是局部重连。','基础操作很稳，但涉及哨兵结点时偶尔会忘记判空。',0,18.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110003,10001,1,22,110002,'链表逆置','考点','route',3,10,'MASTERED',9,'逆置核心是保存后继、翻转指向、整体推进三步循环。','手写已经很顺，现在主要提醒自己检查空链表和单结点。',0,12.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110004,10001,1,23,110001,'栈与队列','节','boxes',2,20,'IN_PROGRESS',4,'栈和队列常考基本操作与典型应用，比如括号匹配和层次遍历。','循环队列判满判空的条件仍要刻意复述。',0,31.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110005,10001,1,NULL,110004,'循环队列判空判满','考点','circle',3,10,'IN_PROGRESS',3,'少用一个存储单元时，队满条件和取模表达式必须一起记。','公式能背，但一换 rear/front 初值就会犹豫。',1,49.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110006,10001,1,24,NULL,'图与遍历','章','branch',1,20,'NOT_STARTED',1,'图论部分容易变杂，必须先稳住存储结构和遍历框架。','还没真正开始做图题，先把邻接矩阵和邻接表复盘一下。',0,24.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110007,10001,1,25,110006,'DFS 与 BFS','节','workflow',2,10,'NOT_STARTED',0,'两种遍历本质是栈和队列驱动的访问顺序差异。','今天只是看了模板，还没开始刷题。',0,29.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110008,10001,1,26,110007,'拓扑排序与关键路径','考点','route',3,10,'NOT_STARTED',0,'拓扑排序要抓入度变化，关键路径要抓事件最早最迟时间。','概念有印象，但还没建立计算流程。',0,35.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110009,10001,1,NULL,NULL,'查找与排序','章','database',1,30,'IN_PROGRESS',5,'排序题要同时记住稳定性、复杂度和适用场景。','快排和堆排的过程图还需要再画几遍。',1,37.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110010,10001,1,NULL,110009,'二分查找','节','sigma',2,10,'MASTERED',6,'二分查找关键是循环不变量和区间边界。','闭区间写法比较顺，半开区间还要多练。',1,14.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110011,10001,1,NULL,110009,'快速排序','节','workflow',2,20,'IN_PROGRESS',4,'快排平均快但最坏退化，枢轴选择和划分过程是考点。','手推一轮能做，代码边界偶尔写乱。',1,43.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(110012,10001,1,NULL,110011,'划分过程与稳定性','考点','shield',3,10,'IN_PROGRESS',3,'快排不稳定，划分过程要能解释元素相对次序为什么会变。','稳定性判断题还容易凭感觉，需要回到定义。',1,46.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120001,10001,7,10,NULL,'进程与线程','章','workflow',1,10,'IN_PROGRESS',5,'进程像资源分配单位，线程像执行单位，后面的同步调度都围着这层展开。','调度算法一做就想混淆周转时间和响应时间。',0,44.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120002,10001,7,11,120001,'同步与互斥','节','shield',2,10,'IN_PROGRESS',6,'同步是顺序约束，互斥是保护临界资源，这两个目标必须分开看。','写 PV 题时最怕遗漏一个 V 操作，结果整个流程都错。',0,63.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120003,10001,7,12,120002,'PV 操作与信号量','考点','binary',3,10,'IN_PROGRESS',7,'信号量本质是用整数和原语约束并发执行次序。','今天又卡在生产者消费者变体题上，能看懂题意但列不稳 P 和 V。',0,78.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120004,10001,7,13,120002,'死锁','考点','atom',3,20,'IN_PROGRESS',5,'死锁就是资源分配进入循环等待，要从条件和处理策略两边分析。','预防、避免、检测三个思路背得出，但一到题里就容易张冠李戴。',0,61.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120005,10001,7,NULL,120001,'调度算法比较','节','route',2,20,'IN_PROGRESS',4,'先分清抢占和非抢占，再比较等待时间、响应时间和吞吐量。','短作业优先和时间片轮转的题算起来还不够快。',1,46.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120006,10001,7,NULL,NULL,'内存管理','章','memory',1,20,'IN_PROGRESS',4,'内存管理要把地址变换、分配回收和置换策略连起来。','分页分段能说清，但题目里算地址时还会慢。',1,40.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120007,10001,7,NULL,120006,'页面置换算法','节','workflow',2,10,'IN_PROGRESS',3,'FIFO、LRU、OPT 的差异要落到访问串上去比较。','Belady 异常已经理解，但自己算 LRU 还是容易漏最近访问次序。',1,57.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120008,10001,7,NULL,120007,'LRU 访问串推演','考点','route',3,10,'IN_PROGRESS',2,'LRU 需要实时维护最近使用次序，不能只看页面编号。','一长串访问序列就会眼花，准备统一画表。',1,66.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120009,10001,7,NULL,120006,'局部性原理','节','brain',2,20,'MASTERED',4,'时间局部性和空间局部性解释了 Cache 与页式存储为什么有效。','这个点已经比较通顺，适合拿来串联多个章节。',1,16.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120010,10001,7,NULL,NULL,'文件与 I/O','章','cable',1,30,'NOT_STARTED',1,'文件系统和 I/O 更像补全操作系统资源管理视角。','目前只是看过目录，还没做题。',1,21.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120011,10001,7,NULL,120010,'中断与 DMA','节','circuit',2,10,'NOT_STARTED',0,'中断和 DMA 都在处理 CPU 与外设协同，但参与程度不同。','概念了解了一遍，细节等后面再补。',1,23.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(120012,10001,7,NULL,120011,'设备管理流程','考点','workflow',3,10,'NOT_STARTED',0,'设备管理题要看请求、排队、调度、中断响应几个阶段。','还没有正式刷题，先留坑位。',1,27.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130001,10001,8,40,NULL,'存储系统','章','memory',1,10,'IN_PROGRESS',4,'存储系统一定要按速度、容量与成本的交换关系来看。','Cache 和虚拟存储串起来之后清晰多了，但细节计算还没完全稳。',0,36.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130002,10001,8,41,130001,'Cache 映射与替换策略','节','circuit',2,10,'IN_PROGRESS',5,'Cache 题先识别映射方式，再判断替换策略和命中情况。','组相联映射的块号拆分还不是特别自然。',0,52.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130003,10001,8,NULL,130002,'命中率与平均访问时间','考点','sigma',3,10,'IN_PROGRESS',4,'平均访问时间要把命中时间、缺失代价和命中率一起代入。','公式知道，但题目给多级 Cache 时会漏一层。',1,55.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130004,10001,8,42,130001,'虚拟存储器','节','layers',2,20,'IN_PROGRESS',3,'虚拟存储把程序地址空间和物理内存解耦，关键在页表和地址变换。','页号页内偏移能拆，但快表命中后的时间计算不够熟。',0,48.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130005,10001,8,43,130004,'TLB 与快表','考点','route',3,10,'IN_PROGRESS',2,'快表是页表项缓存，命中时能减少访存次数。','命中率题要和 Cache 区分，容易把两套公式混到一起。',0,58.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130006,10001,8,NULL,NULL,'指令系统','章','code',1,20,'NOT_STARTED',1,'这一章要先把寻址方式和指令格式理顺，再碰机器数计算。','刚开了个头，先建立总表，后面再专项刷选择题。',1,22.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130007,10001,8,NULL,130006,'寻址方式','节','route',2,10,'NOT_STARTED',0,'寻址方式本质是说明操作数地址如何形成。','概念容易背串，准备做对比表。',1,31.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130008,10001,8,NULL,130007,'立即寻址与间接寻址','考点','binary',3,10,'NOT_STARTED',0,'立即数就是操作数本身，间接寻址还要再访存取地址。','还没正式练题。',1,26.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130009,10001,8,NULL,NULL,'CPU 与流水线','章','cpu',1,30,'IN_PROGRESS',3,'CPU 题要把指令周期、数据通路和控制信号放在一起看。','流水线冲突题能看懂，但计算吞吐率不够快。',1,38.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130010,10001,8,NULL,130009,'指令流水线','节','workflow',2,10,'IN_PROGRESS',3,'流水线提高吞吐率但不一定缩短单条指令执行时间。','填空题还行，综合计算题要多练。',1,42.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130011,10001,8,NULL,130010,'数据相关与控制相关','考点','branch',3,10,'IN_PROGRESS',2,'相关问题要判断依赖来源，再看暂停、转发或预测策略。','容易把结构相关和数据相关混淆。',1,54.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(130012,10001,8,NULL,NULL,'总线与 I/O','章','cable',1,40,'NOT_STARTED',0,'总线和 I/O 补全整机视角，需要和中断、DMA 联动理解。','目前只是看过概念，还没形成题感。',1,18.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140001,10001,9,30,NULL,'传输层','章','cable',1,10,'IN_PROGRESS',4,'传输层重在可靠传输机制和流量拥塞控制的因果链。','一旦题目把滑动窗口和拥塞窗口放一起，我就会犹豫先看哪个。',0,33.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140002,10001,9,31,140001,'TCP 协议','节','network',2,10,'IN_PROGRESS',5,'TCP 是把不可靠网络包装成可靠字节流服务的整套机制。','窗口、确认、重传一起出现时，需要再多做流程推演题。',0,38.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140003,10001,9,32,140002,'TCP 拥塞控制','考点','workflow',3,10,'IN_PROGRESS',6,'拥塞控制要连着慢开始、拥塞避免、快重传、快恢复一起理解。','ssthresh 更新规则还是会混，得再整理成一张流程表。',0,58.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140004,10001,9,33,140002,'三次握手与四次挥手','考点','workflow',3,20,'MASTERED',6,'背步骤不够，要知道为什么需要 SYN、ACK、TIME_WAIT 这些状态。','这块已经挺稳，偶尔只会忘记 TIME_WAIT 的作用。',0,19.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140005,10001,9,NULL,140002,'流量控制与可靠传输','考点','network',3,30,'IN_PROGRESS',5,'可靠传输靠确认、重传、编号，流量控制靠接收方窗口调节。','累计确认和超时重传放在一个题里时，我会把事件顺序搞混。',1,49.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140006,10001,9,34,NULL,'网络层','章','route',1,20,'NOT_STARTED',1,'网络层主要看 IP 地址、路由选择、分片重组和子网划分。','打算放到下周集中开一个专题，把常见计算题一起做。',0,27.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140007,10001,9,NULL,140006,'IP 地址与子网','节','sigma',2,10,'NOT_STARTED',0,'地址规划题关键是掩码、网络号、主机号和可用地址范围。','还没有真正刷题，先留个坑位。',1,30.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140008,10001,9,NULL,140007,'CIDR 与路由聚合','考点','layers',3,10,'NOT_STARTED',0,'CIDR 题要把地址块换算和最长前缀匹配连起来。','公式先看过，还没形成速度。',1,36.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140009,10001,9,NULL,140006,'路由选择协议','节','branch',2,20,'NOT_STARTED',0,'RIP、OSPF、BGP 的差异要从范围、算法和度量标准看。','概念有印象但没系统比较。',1,32.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140010,10001,9,NULL,NULL,'应用层','章','book',1,30,'MASTERED',3,'应用层协议要记住用途、端口和底层传输协议。','DNS、HTTP 基本稳，邮件协议还要再看一遍。',1,20.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140011,10001,9,NULL,140010,'DNS','节','network',2,10,'MASTERED',3,'DNS 是层次化命名系统，递归和迭代查询要分清。','能画出查询流程。',1,16.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(140012,10001,9,NULL,140011,'递归查询与迭代查询','考点','route',3,10,'MASTERED',2,'递归查询由被请求方继续代查，迭代查询则返回下一步线索。','这个点已经比较清楚。',1,12.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210001,10001,10,NULL,NULL,'高等数学','模块','sigma',1,10,'IN_PROGRESS',8,'高数是公共课数学的主线，先把极限、导数、积分三条主线拉出来。','题量一上来就会感觉很长，所以我在练分块复习。',1,39.00,'2026-06-06 00:54:15','2026-06-06 09:42:35'),(210002,10001,10,NULL,210001,'极限与连续','专题','route',2,10,'IN_PROGRESS',6,'极限题先判断类型，再选等价无穷小、洛必达或夹逼等工具。','能想到方法，但计算经常拖慢节奏。',1,47.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210003,10001,10,NULL,210002,'极限计算','题型','sigma',3,10,'IN_PROGRESS',8,'极限计算要先化简，再看是否满足套公式的前提。','一遇到分段函数和含参极限，就会担心自己分类不全。',1,64.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210004,10001,10,NULL,210001,'一元函数微分学','专题','workflow',2,20,'IN_PROGRESS',7,'导数既是计算题也是证明题的入口，定义和几何意义都不能丢。','综合题里经常先求导再讨论单调性，这个链条还要更熟。',1,42.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210005,10001,10,NULL,210004,'导数应用','题型','brain',3,10,'IN_PROGRESS',7,'导数应用常落在单调性、极值、最值和切线问题。','函数证明题里总想太多，反而不敢先求导。',1,53.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210006,10001,10,NULL,210001,'一元函数积分学','专题','sigma',2,30,'IN_PROGRESS',5,'积分先分不定积分与定积分，再按换元、分部、几何意义来拆。','定积分换元没问题，但遇到参数积分还是发虚。',1,44.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210007,10001,10,NULL,210006,'定积分几何意义','题型','boxes',3,10,'MASTERED',5,'面积与体积题先画图，积分上下限和被积函数会直观很多。','画草图之后准确率明显提高，这块逐渐稳定。',1,18.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210008,10001,10,NULL,210006,'二重积分','题型','layers',3,20,'IN_PROGRESS',4,'二重积分先选积分次序，再处理积分区域。','换成极坐标时偶尔会漏掉雅可比。',1,56.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210009,10001,10,NULL,NULL,'线性代数','模块','layers',1,20,'IN_PROGRESS',5,'线代更像结构化推理，矩阵、方程组、特征值三块要互相勾连。','证明题会慢一些，需要多做书写训练。',1,34.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210010,10001,10,NULL,210009,'矩阵运算','专题','boxes',2,10,'MASTERED',6,'矩阵乘法和初等变换是线代所有后续题型的手柄。','基础计算已经比较稳，接下来把速度再提一提。',1,17.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210011,10001,10,NULL,210010,'初等变换','题型','workflow',3,10,'MASTERED',5,'初等行变换要保持方程组同解，矩阵求逆和求秩都要靠它。','步骤比较稳，主要提速。',1,14.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210012,10001,10,NULL,210009,'特征值与特征向量','专题','atom',2,20,'IN_PROGRESS',4,'特征值问题是把矩阵作用变成伸缩关系。','相似对角化的条件记住了，但题目迁移还不够快。',1,51.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210013,10001,10,NULL,NULL,'概率论与数理统计','模块','atom',1,30,'NOT_STARTED',2,'概率部分概念多，后期要把分布、期望、方差统一进一个框架。','目前还在预热阶段，没有正式开刷。',1,25.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210014,10001,10,NULL,210013,'随机变量及其分布','专题','binary',2,10,'NOT_STARTED',1,'离散型和连续型的定义、分布函数和密度函数要分层记。','准备等高数节奏稳一些再全面推进。',1,28.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(210015,10001,10,NULL,210014,'分布函数与密度函数','题型','route',3,10,'NOT_STARTED',0,'分布函数右连续且单调不减，密度函数积分得到概率。','还没正式刷题。',1,32.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220001,10001,11,NULL,NULL,'词汇','模块','book',1,10,'IN_PROGRESS',9,'英语提分的底盘还是词汇，但不是孤立背，而是带语境复现。','背新词不难，难的是熟词僻义总在阅读里反复出现。',1,36.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220002,10001,11,NULL,220001,'词根词缀','专题','layers',2,10,'MASTERED',6,'词根词缀是扩词效率最高的工具，特别适合串联近义词。','这一块效果不错，背单词不再完全靠死记。',1,15.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220003,10001,11,NULL,220002,'同源词扩展','题型','branch',3,10,'MASTERED',4,'同源词要一起记词性变化和语义方向。','做阅读时能识别不少熟悉词根。',1,13.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220004,10001,11,NULL,220001,'熟词僻义','专题','brain',2,20,'IN_PROGRESS',5,'考研英语喜欢用熟词的非常见义项卡人，必须在真题语境里记。','今天又被 address 和 subject 的语境义绊住。',1,52.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220005,10001,11,NULL,220004,'真题语境复现','题型','database',3,10,'IN_PROGRESS',4,'熟词僻义要把例句和选项干扰一起整理。','只背中文释义效果一般，开始改成摘句子。',1,48.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220006,10001,11,NULL,NULL,'阅读','模块','book',1,20,'IN_PROGRESS',8,'阅读是总分大头，要把长难句、定位、选项干扰一起练。','错题大多不是看不懂，而是定位后没有抓住题干真正问法。',1,48.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220007,10001,11,NULL,220006,'长难句拆分','专题','cable',2,10,'IN_PROGRESS',7,'先找主干，再拆从句和插入语，最后还原中文逻辑。','句子一长我就容易不敢下刀，得更果断地划主谓宾。',1,62.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220008,10001,11,NULL,220007,'定语从句与插入语','题型','route',3,10,'IN_PROGRESS',5,'定语从句要先找先行词，插入语可以先划出去看主干。','插入语多的时候仍然会打断理解。',1,55.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220009,10001,11,NULL,220006,'主旨题与态度题','专题','route',2,20,'IN_PROGRESS',6,'主旨题抓全文重心，态度题盯评价词和转折句。','一看到选项都像对的，就说明我还没有真正站在作者视角上。',1,49.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220010,10001,11,NULL,220009,'干扰项识别','题型','shield',3,10,'IN_PROGRESS',5,'干扰项常见偷换范围、无中生有、过度推断。','最容易被过度推断带跑。',1,50.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220011,10001,11,NULL,NULL,'写作','模块','code',1,30,'IN_PROGRESS',4,'写作不能只背模板，要准备自己的句型仓库和主题素材。','小作文套路初步有了，大作文还缺能自然套用的表达。',1,33.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220012,10001,11,NULL,220011,'小作文模板','专题','workflow',2,10,'IN_PROGRESS',4,'书信、通知、邀请这些体裁要先稳住格式和高频句。','开头和结尾已经背住，但主体段还需要更自然。',1,29.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220013,10001,11,NULL,220012,'通知与建议信','题型','book',3,10,'NOT_STARTED',1,'通知重清晰，建议信重语气和可执行建议。','还没整理自己的固定句。',1,30.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220014,10001,11,NULL,NULL,'翻译','模块','cable',1,40,'IN_PROGRESS',3,'翻译最吃句法分析，真正难的是拆结构而不是逐词对应。','长句里主干抓得慢，导致整句都不敢下笔。',1,43.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(220015,10001,11,NULL,220014,'英译汉断句','专题','cable',2,10,'IN_PROGRESS',3,'翻译第一步不是直译，而是敢于断句和重组信息。','定语从句一多就会翻得发硬，得多看范文处理。',1,44.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230001,10001,6,NULL,NULL,'马原','模块','brain',1,10,'IN_PROGRESS',6,'马原不是靠硬背孤立句子，而是搭建世界观、方法论和认识论框架。','选择题能跟住，大题还不能自然展开。',1,37.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230002,10001,6,NULL,230001,'实践与认识','专题','workflow',2,10,'IN_PROGRESS',5,'认识来源于实践、又反作用于实践，这条链要能自己说顺。','大题表述还是偏口语，需要更像标准答案。',1,43.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230003,10001,6,NULL,230002,'实践是检验真理的标准','考点','shield',3,10,'IN_PROGRESS',4,'这个考点要能从认识来源、发展动力和检验标准三个角度展开。','标准表述还要再背一背。',1,45.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230004,10001,6,NULL,230001,'矛盾分析法','专题','branch',2,20,'IN_PROGRESS',4,'主要矛盾和矛盾主要方面很容易混，必须通过例子压实。','选项里一换语序就容易被带走。',1,47.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230005,10001,6,NULL,230004,'两点论与重点论','考点','route',3,10,'IN_PROGRESS',3,'两点论防止片面，重点论要求抓主要方面。','能背，但结合材料时还不够自然。',1,40.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230006,10001,6,NULL,NULL,'史纲','模块','book',1,20,'IN_PROGRESS',4,'史纲要抓阶段线索和事件意义，避免只剩年份记忆。','重大转折点能记住，但横向比较还比较弱。',1,32.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230007,10001,6,NULL,230006,'近现代历史主线','专题','route',2,10,'MASTERED',5,'史纲复习关键是主线清楚，再去挂载人物事件和意义。','这一块框架感不错，后续主要补细节。',1,20.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230008,10001,6,NULL,230007,'重大转折事件','考点','book',3,10,'MASTERED',4,'转折事件要记背景、内容、意义，不能只记年份。','遵义会议这类节点比较稳。',1,18.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230009,10001,6,NULL,230006,'新民主主义革命','专题','shield',2,20,'IN_PROGRESS',4,'革命道路、统一战线和党的建设是高频组合考点。','一做多选题就怕漏项，需要再细抠教材表述。',1,39.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230010,10001,6,NULL,NULL,'毛中特','模块','shield',1,30,'NOT_STARTED',2,'毛中特后期投入更划算，重点是概念体系和政策表达。','目前只在听导学课。',1,22.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230011,10001,6,NULL,230010,'中国式现代化','专题','network',2,10,'NOT_STARTED',1,'这部分要结合核心特征和高频表述来背。','计划放到暑期后半段系统收。',1,24.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230012,10001,6,NULL,230011,'共同富裕与高质量发展','考点','layers',3,10,'NOT_STARTED',0,'要把目标、路径和政策表述放在一起记。','还没有正式开始。',1,26.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230013,10001,6,NULL,NULL,'时政','模块','network',1,40,'IN_PROGRESS',3,'时政适合作为持续积累模块，不要等到最后一周突击。','每天看一点，先把高频会议和主题整理成卡片。',1,35.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230014,10001,6,NULL,230013,'当月热点专题','专题','network',2,10,'IN_PROGRESS',3,'时政热点要按会议、政策、国际事件分桶整理。','这周准备把经济和科技类热点做成一页总结。',1,42.00,'2026-06-06 00:54:15','2026-06-06 00:54:15'),(230015,10001,6,NULL,230014,'会议与文件关键词','考点','book',3,10,'IN_PROGRESS',3,'同一主题在不同文件里的提法很像，适合做对照表。','最近开始做关键词摘录，感觉终于没那么散了。',1,31.00,'2026-06-06 00:54:15','2026-06-06 00:54:15');
+/*!40000 ALTER TABLE `user_syllabus_node` ENABLE KEYS */;
+UNLOCK TABLES;
+/*!40103 SET TIME_ZONE=@OLD_TIME_ZONE */;
 
-INSERT INTO sys_user(id, username, display_name, password_hash, enabled) VALUES
-  (1, 'root', '系统管理员', '{noop}admin123', 1),
-  (2, 'community', '社区管理员', '{noop}admin123', 1),
-  (10001, 'candidate', '考研考生', '{noop}user123', 1)
-ON DUPLICATE KEY UPDATE display_name = VALUES(display_name), enabled = VALUES(enabled);
+/*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
+/*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;
+/*!40014 SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS */;
+/*!40101 SET CHARACTER_SET_CLIENT=@OLD_CHARACTER_SET_CLIENT */;
+/*!40101 SET CHARACTER_SET_RESULTS=@OLD_CHARACTER_SET_RESULTS */;
+/*!40101 SET COLLATION_CONNECTION=@OLD_COLLATION_CONNECTION */;
+/*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 
-INSERT IGNORE INTO sys_user_role(user_id, role_id) VALUES
-  (1, 1),
-  (2, 2),
-  (10001, 3);
-
-INSERT INTO tree_group(user_id, name, description, sort_order)
-SELECT u.id, '专业课', '考研专业课知识树分组', 10
-FROM sys_user u
-WHERE NOT EXISTS (
-  SELECT 1 FROM tree_group g WHERE g.user_id = u.id AND g.name = '专业课'
-);
-
-INSERT INTO study_tree(user_id, group_id, name, description, sort_order)
-SELECT u.id, g.id, '专业课默认树', '默认考研专业课学习树', 10
-FROM sys_user u
-JOIN tree_group g ON g.user_id = u.id AND g.name = '专业课'
-WHERE NOT EXISTS (
-  SELECT 1 FROM study_tree t WHERE t.user_id = u.id
-);
-
-INSERT INTO syllabus_node(id, parent_id, code, title, label, level_no, sort_order, description) VALUES
-  (1, NULL, 'CS', '计算机组成原理', '科目', 1, 10, '计算机统考核心科目之一，关注硬件系统与组成结构'),
-  (2, NULL, 'DS', '数据结构', '科目', 1, 20, '计算机统考核心科目之一，关注抽象数据类型与算法基础'),
-  (3, NULL, 'OS', '操作系统', '科目', 1, 30, '计算机统考核心科目之一，关注进程、内存、文件与 I/O'),
-  (4, NULL, 'CN', '计算机网络', '科目', 1, 40, '计算机统考核心科目之一，关注分层协议与网络应用'),
-  (10, 3, 'OS-PROCESS', '进程与线程', '章', 2, 10, '进程概念、状态转换、调度与同步互斥'),
-  (11, 10, 'OS-PROCESS-SYNC', '同步与互斥', '节', 3, 10, '信号量、管程、经典同步问题'),
-  (12, 11, 'OS-PV', 'PV 操作与信号量', '考点', 4, 10, 'P/V 原语、互斥信号量与同步信号量的使用'),
-  (13, 11, 'OS-DEADLOCK', '死锁', '考点', 4, 20, '死锁条件、预防、避免、检测与解除'),
-  (20, 2, 'DS-LINEAR', '线性表', '章', 2, 10, '顺序表、链表及相关操作'),
-  (21, 20, 'DS-LIST', '链表', '节', 3, 10, '单链表、双链表、循环链表'),
-  (22, 21, 'DS-LIST-REVERSE', '链表逆置', '考点', 4, 10, '头插法、递归、指针调整边界'),
-  (30, 4, 'CN-TRANSPORT', '传输层', '章', 2, 10, 'TCP/UDP、可靠传输、拥塞控制'),
-  (31, 30, 'CN-TCP', 'TCP 协议', '节', 3, 10, '连接管理、可靠传输、流量控制'),
-  (32, 31, 'CN-TCP-CONGESTION', 'TCP 拥塞控制', '考点', 4, 10, '慢开始、拥塞避免、快重传与快恢复'),
-  (40, 1, 'CS-MEMORY', '存储系统', '章', 2, 10, '层次化存储、Cache、虚拟存储器'),
-  (41, 40, 'CS-CACHE', 'Cache', '节', 3, 10, '映射方式、替换策略、命中率计算')
-ON DUPLICATE KEY UPDATE
-  parent_id = VALUES(parent_id),
-  title = VALUES(title),
-  label = VALUES(label),
-  level_no = VALUES(level_no),
-  sort_order = VALUES(sort_order),
-  description = VALUES(description);
